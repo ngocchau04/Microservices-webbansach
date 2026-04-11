@@ -139,6 +139,23 @@ Follow logs:
 npm run compose:logs
 ```
 
+Test gateway first:
+
+- `http://localhost:8080/health`
+
+If OK then backend entrypoint on. README ghi gateway là backend entrypoint chính của stack.
+
+Then open website:
+
+- `http://localhost:5173`
+
+Nếu web lên nhưng API lỗi, thường là một trong các service phía sau chưa lên đủ.
+
+## Login
+
+- `admin@bookstore.local / Admin@123`
+- `user@bookstore.local / User@123`
+
 ## Service Dependencies
 
 - `api-gateway` depends on all domain services.
@@ -191,3 +208,10 @@ Smoke coverage includes:
 - Active stack for handover is `apps/* + services/* + docker-compose.micro.yml`.
 - New work should not add runtime dependencies from `apps/web` to legacy monolith ports.
 - Active gateway routing is microservices-only and does not fallback to monolith runtime targets.
+
+## Member:
+- 3122411020: Đàm Thị Ngọc Châu (Leader)
+- 3122411049: Lê Gia Hân
+- 3122411141: Phan Thị Hồng Nhiên
+- 3122411173: Võ Hoàng Kim Quyên
+- 3122411243: Phan Thị Hải Vân
