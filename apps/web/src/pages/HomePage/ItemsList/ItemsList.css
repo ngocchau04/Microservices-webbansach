@@ -1,0 +1,118 @@
+.items-list-wrapper {
+  /* font-family: Arial, sans-serif; */
+  margin: 20px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background-color: #f9f9f9;
+}
+
+.items-list-wrapper h3 {
+  display: flex;
+  align-items: center;
+  font-size: 24px;
+  color: #ff4500;
+}
+
+.container {
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  flex-wrap: wrap;
+  /* Allow items to wrap for smaller screens */
+  background-color: #f7f7f7;
+  /* font-family: 'Inter', Helvetica, Arial, sans-serif; */
+}
+
+.itemtype {
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  /* Add smooth animation for hover */
+}
+
+.itemtype:hover {
+  transform: translateY(-5px);
+  /* Slightly lift the itemtype on hover */
+}
+
+.itemtype img {
+  width: 100px;
+  /* Consistent size for better visibility */
+  height: 100px;
+  border-radius: 50%;
+  border: 2px solid #ddd;
+  /* Add a subtle border */
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  /* Smooth transitions */
+}
+
+.itemtype img:hover {
+  transform: scale(1.1);
+  /* Slight zoom on hover */
+  border-color: #007bff;
+  /* Change border color on hover */
+  box-shadow: 0 4px 10px rgba(0, 123, 255, 0.5);
+  /* Add box shadow on hover */
+}
+
+.itemtype p {
+  font-weight: bold;
+  display: flex;
+  width: 100px;
+  height: 50px;
+  justify-content: center;
+  align-self: center;
+  font-size: 15px;
+  /* Adjust font size for clarity */
+  color: #333;
+  /* Neutral text color for readability */
+  text-transform: capitalize;
+  /* Capitalize text for a uniform style */
+  line-height: 1.4;
+  /* Improve readability */
+}
+
+.itemtype:hover p {
+  color: #007bff;
+  /* Add a hover effect for text color */
+}
+
+.items-list-wrapper {
+  background-color: #f7f7f7;
+  /* font-family: "Inter", Helvetica, Arial, sans-serif; */
+}
+
+.items-list-title {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+
+@media (max-width: 768px) {
+  .itemtype img {
+    width: 90px;
+    /* Adjust image size for smaller screens */
+    height: 90px;
+  }
+
+  .itemtype p {
+    font-size: 12px;
+    /* Adjust font size for smaller screens */
+  }
+}
+
+@media (max-width: 480px) {
+  .itemtype img {
+    width: 70px;
+    /* Further reduce size for very small screens */
+    height: 70px;
+  }
+
+  .itemtype p {
+    font-size: 10px;
+    /* Adjust font size for very small screens */
+  }
+}

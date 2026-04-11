@@ -1,0 +1,12 @@
+.admin-support-container {
+  width: 100%;
+}
+
+.admin-support-container table {
+  width: 100%;
+}
+
+.admin-support-container select {
+  min-width: 120px;
+  padding: 4px 6px;
+}

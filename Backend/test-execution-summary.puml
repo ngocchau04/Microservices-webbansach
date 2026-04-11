@@ -1,0 +1,106 @@
+@startuml Test Case Execution Summary
+
+!theme plain
+skinparam backgroundColor white
+skinparam handwritten false
+
+title Test Case Execution Summary\nktpm-webbansach Project
+
+' Pie Chart for Test Results
+!procedure $pie($name, $value, $color)
+  rectangle "$name\n$value" as $name $color
+!endprocedure
+
+' Main container
+package "Test Execution Results" {
+  
+  ' Summary Statistics
+  note as summary
+    **📊 TỔNG QUAN KẾT QUẢ TEST**
+    ═══════════════════════════
+    • Tổng số test cases: **127**
+    • Thời gian thực thi: **16 giây**
+    • Test suites: **6 modules**
+    • Pass rate: **84.3%**
+  end note
+  
+  ' Test Results Distribution
+  package "Test Results Distribution" {
+    $pie("✅ Test Cases Passed\n107 cases (84.3%)", "84.3%", lightgreen)
+    $pie("❌ Test Cases Failed\n20 cases (15.7%)", "15.7%", lightcoral)
+    $pie("⚪ Test Cases Blocked\n0 cases (0%)", "0%", lightgray)
+    $pie("⏸️ Test Cases Not Run\n0 cases (0%)", "0%", lightyellow)
+  }
+  
+  ' Module-wise Results
+  package "Module Test Results" {
+    rectangle "🔍 Search Controller\n24 tests - 87.5% pass" as search lightblue
+    rectangle "🛒 Cart Controller\n29 tests - 89.7% pass" as cart lightblue  
+    rectangle "📋 Order Controller\n13 tests - 84.6% pass" as order lightblue
+    rectangle "🔐 Authorization Service\n32 tests - 90.6% pass" as auth lightgreen
+    rectangle "🌐 E2E Bookstore\n16 tests - 87.5% pass" as e2e lightblue
+    rectangle "👤 User Profile\n13 tests - 46.2% pass" as profile lightcoral
+  }
+  
+  ' Defect Distribution
+  package "Defect Severity Distribution" {
+    rectangle "🔴 Critical: 4 defects (20%)" as critical red
+    rectangle "🟠 High: 8 defects (40%)" as high orange  
+    rectangle "🟡 Medium: 6 defects (30%)" as medium yellow
+    rectangle "🟢 Low: 2 defects (10%)" as low lightgreen
+  }
+  
+  ' Coverage Metrics
+  package "Code Coverage Metrics" {
+    rectangle "📈 Line Coverage\n78.5%" as line_cov
+    rectangle "📈 Branch Coverage\n72.8%" as branch_cov
+    rectangle "📈 Function Coverage\n81.2%" as func_cov
+    rectangle "📈 Statement Coverage\n79.3%" as stmt_cov
+  }
+  
+  ' Test Automation
+  package "Test Automation Coverage" {
+    rectangle "🤖 Automated Tests\n164 tests (86.8%)" as automated lightgreen
+    rectangle "👨‍💻 Manual Tests\n25 tests (13.2%)" as manual lightyellow
+  }
+}
+
+' Relationships and flow
+summary --> search
+summary --> cart
+summary --> order
+summary --> auth
+summary --> e2e
+summary --> profile
+
+search --> critical
+cart --> critical
+order --> high
+auth --> high
+e2e --> medium
+profile --> critical
+
+' Legend
+legend right
+  |= Color |= Meaning |
+  | <back:lightgreen>   </back> | Excellent (>90%) |
+  | <back:lightblue>    </back> | Good (80-90%) |
+  | <back:lightyellow>  </back> | Fair (60-80%) |
+  | <back:lightcoral>   </back> | Poor (<60%) |
+  | <back:red>          </back> | Critical Issue |
+  | <back:orange>       </back> | High Priority |
+endlegend
+
+' Notes
+note bottom
+  **🎯 KẾT LUẬN & KHUYẾN NGHỊ**
+  ════════════════════════════
+  • **Tổng thể:** 84.3% pass rate - cần cải thiện
+  • **Module tốt nhất:** Authorization Service (90.6%)
+  • **Module cần chú ý:** User Profile (46.2%)
+  • **Ưu tiên:** Fix 4 Critical và 8 High defects
+  • **Code coverage:** Cần tăng từ 78.5% lên >80%
+  • **Automation rate:** 86.8% - rất tốt
+end note
+
+@enduml

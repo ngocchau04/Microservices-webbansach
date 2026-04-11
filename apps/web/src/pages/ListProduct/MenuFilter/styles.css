@@ -1,0 +1,159 @@
+.menufilter {
+    font-family: Arial, sans-serif;
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 300px;
+    margin: 0 auto;
+    text-align: left;
+  }
+  
+  .menufilter h4 {
+    font-size: 18px;
+    margin-bottom: 5px;
+    color: #333;
+  }
+  
+  .menufilter label {
+    font-size: 14px;
+    color: #555;
+  }
+  
+  .menufilter input[type="text"],
+  .menufilter input[type="number"],
+  .menufilter select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  
+  .menufilter button {
+    min-width: 20%;
+    padding: 5px;
+    margin :5px;
+    background-color: rgb(220, 79, 79);
+    border: none;
+    color: white;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+  
+  .menufilter button:hover {
+    background-color: #0056b3;
+  }
+  
+  .menufilter button:focus {
+    outline: none;
+  }
+  
+  .menufilter .clear-filters-btn,
+  .menufilter .search-btn {
+    width: 48%;
+    display: inline-block;
+    margin-right: 4%;
+  }
+  
+  .menufilter .search-btn {
+    margin-right: 0;
+  }
+  
+  .menufilter .clear-filters-btn,
+  .menufilter .search-btn {
+    font-size: 14px;
+  }
+  
+  .menufilter .clear-filters-btn {
+    background-color: #dc3545;
+  }
+  
+  .menufilter .clear-filters-btn:hover {
+    background-color: #c82333;
+  }
+  
+  .menufilter .price-range-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  
+  .menufilter .price-range-buttons button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 15px;
+    cursor: pointer;
+  }
+  
+  .menufilter .price-range-buttons button:hover {
+    background-color: #218838;
+  }
+  
+  .menufilter .price-range-buttons button:focus {
+    outline: none;
+  }
+  
+  .menufilter p {
+    font-size: 12px;
+    color: red;
+    cursor: pointer;
+    margin-top: -5px;
+  }
+  
+  .menufilter .rating-sort {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  
+  .menufilter .rating-sort p,
+  .menufilter .price-sort p,
+  .menufilter .discount-sort p {
+    margin-left: 10px;
+    font-size: 12px;
+    color: #d9534f;
+    cursor: pointer;
+  }
+  
+  .menufilter .rating-sort,
+  .menufilter .price-sort,
+  .menufilter .discount-sort {
+    display: flex;
+    align-items: center;
+  }
+  
+  .menufilter .price-sort,
+  .menufilter .discount-sort {
+    margin-top: 10px;
+  }
+  
+  .menufilter .arrow-icons {
+    display: flex;
+    gap: 5px;
+  }
+  
+  .menufilter .arrow-icons svg {
+    cursor: pointer;
+  }
+  
+  .menufilter .arrow-icons svg:hover {
+    color: #007bff;
+  }
+  
+  .menufilter select:focus,
+  .menufilter input:focus {
+    outline: none;
+    border-color: #007bff;
+  }
+  .menufilter .filterSort{
+    display: flex;
+    gap: 10px;
+    justify-content: flex-start;
+    cursor: pointer;
+  }

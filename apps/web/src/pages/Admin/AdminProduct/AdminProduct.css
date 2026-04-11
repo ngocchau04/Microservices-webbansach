@@ -1,0 +1,221 @@
+
+  .admin-product-container {
+    font-family: "Arial", sans-serif;
+    background-color: #f9f9f9;
+    margin: 0;
+    padding: 0;
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .admin-product-container h1, h2 {
+    text-align: center;
+    font-weight: bold;
+    color: rgba(206, 21, 0, 0.92);
+  }
+  
+  .admin-product-container h1 {
+    font-size: 32px;
+    margin-bottom: 20px;
+  }
+  
+  .admin-product-container h2 {
+    font-size: 24px;
+    margin: 20px 0;
+  }
+  
+  .admin-product-actions, .admin-product-list, .admin-product-edit {
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid rgba(206, 21, 0, 0.92);
+    border-radius: 10px;
+    background-color: #fff7e0;
+  }
+  
+  .admin-product-actions input, .admin-product-edit input {
+    width: 100%;
+    margin: 10px 0;
+    padding: 10px;
+    border: 1px solid rgba(206, 21, 0, 0.92);
+    border-radius: 5px;
+    font-size: 16px;
+  }
+  
+  .admin-product-actions input:focus, .admin-product-edit input:focus {
+    outline: none;
+    border-color: #FFD700;
+    box-shadow: 0 0 5px #FFD700;
+  }
+  
+  .admin-product-actions button, .admin-product-edit button {
+    background-color: rgba(206, 21, 0, 0.92);
+    color: #fff;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .admin-product-actions button:hover, .admin-product-edit button:hover {
+    background-color: #FFD700;
+    color: rgba(206, 21, 0, 0.92);
+  }
+  
+  /* Table Styling */
+  .admin-product-container table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 16px;
+  }
+  
+  .admin-product-container table thead th {
+    background-color: rgba(206, 21, 0, 0.92);
+    color: #fff;
+    padding: 10px;
+    text-align: left;
+  }
+  
+  .admin-product-container table tbody td {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .admin-product-container table tbody tr:hover {
+    background-color: rgba(206, 21, 0, 0.1);
+  }
+  
+  .admin-product-container table tbody td:last-child {
+    text-align: center;
+  }
+  
+  .admin-product-container table button {
+    margin: 0 5px;
+    padding: 5px 10px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .admin-product-container table button:first-child {
+    background-color: #FFD700;
+    color: rgba(206, 21, 0, 0.92);
+  }
+  
+  .admin-product-container table button:first-child:hover {
+    background-color: rgba(206, 21, 0, 0.92);
+    color: #fff;
+  }
+  
+  .admin-product-container table button:last-child {
+    background-color: rgba(206, 21, 0, 0.92);
+    color: #fff;
+  }
+  
+  .admin-product-container table button:last-child:hover {
+    background-color: #FFD700;
+    color: rgba(206, 21, 0, 0.92);
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .admin-product-container {
+      padding: 15px;
+    }
+  
+    .admin-product-container table thead {
+      display: none;
+    }
+  
+    .admin-product-container table tbody tr {
+      display: block;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background-color: #fff;
+      padding: 10px;
+    }
+  
+    .admin-product-container table tbody td {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: none;
+    }
+  
+    .admin-product-container table tbody td::before {
+      content: attr(data-label);
+      font-weight: bold;
+      color: rgba(206, 21, 0, 0.92);
+    }
+  
+    .admin-product-container table tbody td:last-child {
+      justify-content: flex-start;
+    }
+  
+    .admin-product-actions input, .admin-product-edit input {
+      font-size: 14px;
+    }
+  
+    .admin-product-actions button, .admin-product-edit button {
+      width: 100%;
+      padding: 10px;
+      font-size: 14px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .admin-product-container h1 {
+      font-size: 24px;
+    }
+  
+    .admin-product-container h2 {
+      font-size: 20px;
+    }
+  
+    .admin-product-container table tbody td {
+      font-size: 14px;
+    }
+  }
+  .upload-container {
+    padding: 10px;
+    border: 1px solid rgba(206, 21, 0, 0.92);
+    border-radius: 10px;
+    background-color: #fff7e0;
+  }
+
+  .upload-container h2 {
+    font-size: 24px;
+    font-weight: bold;
+    color: rgba(206, 21, 0, 0.92);
+    margin-bottom: 10px;
+  }
+
+  .upload-container input[type="file"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid rgba(206, 21, 0, 0.92);
+    border-radius: 5px;
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .upload-container input[type="file"]:focus {
+    outline: none;
+    border-color: #FFD700;
+    box-shadow: 0 0 5px #FFD700;
+  }
+
+  .upload-container p {
+    font-size: 16px;
+    color: #333;
+    margin-top: 10px;
+  }

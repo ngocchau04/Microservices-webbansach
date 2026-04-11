@@ -1,0 +1,41 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start:legacy": "nodemon index.js",
+    "start": "nodemon index.js",
+    "start:migration-runtime": "node start.js",
+    "start:gateway-legacy": "nodemon gateway/index.js",
+    "test": "node ./node_modules/jest/bin/jest.js --runInBand",
+    "test:smoke:gateway": "node ./node_modules/jest/bin/jest.js --runInBand test/smoke/gateway.smoke.test.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cloudinary": "^1.41.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "google-auth-library": "^9.14.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.20.0",
+    "mongoose": "^8.8.1",
+    "multer": "^1.4.4",
+    "multer-storage-cloudinary": "^4.0.0",
+    "nodemailer": "^6.9.16",
+    "nodemon": "^3.1.7"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "cross-env": "^10.1.0",
+    "jest": "^30.2.0",
+    "mongodb-memory-server": "^10.2.3",
+    "supertest": "^7.1.4"
+  },
+  "jest": {
+    "testEnvironment": "node"
+  }
+}

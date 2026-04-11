@@ -1,0 +1,38 @@
+{
+  "name": "book_selling_website",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node ./node_modules/vite/bin/vite.js build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "book_selling_website": "file:",
+    "highcharts": "^12.0.2",
+    "highcharts-react-official": "^3.2.1",
+    "qrcode.react": "^3.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-icons": "^5.5.0",
+    "react-rating-stars-component": "^2.2.0",
+    "react-router-dom": "^6.27.0",
+    "react-slick": "^0.30.2",
+    "slick-carousel": "^1.8.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.11.1",
+    "@types/react": "^18.3.10",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.2",
+    "eslint": "^9.11.1",
+    "eslint-plugin-react": "^7.37.0",
+    "eslint-plugin-react-hooks": "^5.1.0-rc.0",
+    "eslint-plugin-react-refresh": "^0.4.12",
+    "globals": "^15.9.0",
+    "vite": "^5.4.10"
+  }
+}

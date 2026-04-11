@@ -1,0 +1,105 @@
+.adorderbut{
+    display: flex;
+    margin-bottom: 20px;
+}
+.adorderbut button{
+    margin-left: 30px;
+    font-size: 20px;
+    padding: 5px;
+    border: 2px solid rgb(255, 255, 255);
+    border-radius: 5px;
+    background-color: #CD0000;
+    cursor: pointer;
+    color: #ffffff;
+}
+.adorderbut button:hover{
+    color: #000000;
+    background-color: #FFD700;
+    border: 2px solid rgb(0, 0, 0);
+    border-radius: 5px;
+}
+.adormadh{
+    cursor: pointer;
+}
+.adormadh:hover{
+    text-decoration: underline;
+}
+.adorttdh{
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+.adorttdh button{
+    border: none;
+    font-size: 30px;
+    background-color: #ffffff;
+    cursor: pointer;
+    color: black;
+}
+.adorttdh button:hover{
+    color: #CD0000;
+}
+.adorttnn{
+    margin-left: 20px;
+    margin-bottom: 20px;
+    margin-top: 10px;
+}
+.adorxtt{
+    font-size: 18px;
+}
+.ps p{
+    margin-bottom: 10px;
+}
+.cnbton{
+    margin-top: 5px;
+    margin-bottom: 15px;
+}
+.cnbton button{
+    padding: 3px;
+    font-size: 15px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+.cardgh{
+    display: flex;
+    width: 500px;
+    height: auto;
+    border: 1.5px solid;
+    border-radius: 5px;
+    margin-left: 50px;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.cardgh img{
+    width: 30%;
+    border-radius: 5px 0 0 5px;
+    cursor: pointer;
+}
+.cardghh-text{
+    width: 70%;
+    margin-left: 20px;
+    margin-top: 10px;
+}
+.cardgh-text p{
+    margin-left: 10px;
+    margin-top: 10px;
+}
+.cardghprice{
+    text-align: center;
+    margin-top: 10px;
+    margin-left: 10px;
+    display: flex;
+}
+.cargh-pr{
+    font-size: 20px;
+}
+.cardgh-price{
+    font-size: 30px;
+    margin-top: -7px;
+    margin-left: 10px;
+    color: #A0522D;
+}
+.adorttdh h2 {
+    text-align: left;
+}

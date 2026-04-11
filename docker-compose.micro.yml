@@ -1,0 +1,259 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: book-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_micro_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - bookstore-micro-net
+
+  identity-service:
+    build:
+      context: ./services/identity-service
+      dockerfile: Dockerfile
+    container_name: book-identity-service
+    restart: unless-stopped
+    env_file:
+      - ./services/identity-service/.env.example
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - IDENTITY_DB_NAME=book_identity
+      - NOTIFICATION_SERVICE_URL=http://notification-service:4005
+    ports:
+      - "4001:4001"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      notification-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4001/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    networks:
+      - bookstore-micro-net
+
+  catalog-service:
+    build:
+      context: ./services/catalog-service
+      dockerfile: Dockerfile
+    container_name: book-catalog-service
+    restart: unless-stopped
+    env_file:
+      - ./services/catalog-service/.env.example
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - CATALOG_DB_NAME=book_catalog
+    ports:
+      - "4002:4002"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4002/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    networks:
+      - bookstore-micro-net
+
+  checkout-service:
+    build:
+      context: ./services/checkout-service
+      dockerfile: Dockerfile
+    container_name: book-checkout-service
+    restart: unless-stopped
+    env_file:
+      - ./services/checkout-service/.env.example
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - CHECKOUT_DB_NAME=book_checkout
+      - CATALOG_SERVICE_URL=http://catalog-service:4002
+      - NOTIFICATION_SERVICE_URL=http://notification-service:4005
+    ports:
+      - "4003:4003"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      catalog-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4003/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    networks:
+      - bookstore-micro-net
+
+  media-service:
+    build:
+      context: ./services/media-service
+      dockerfile: Dockerfile
+    container_name: book-media-service
+    restart: unless-stopped
+    env_file:
+      - ./services/media-service/.env.example
+    ports:
+      - "4004:4004"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4004/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    networks:
+      - bookstore-micro-net
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: book-notification-service
+    restart: unless-stopped
+    env_file:
+      - ./services/notification-service/.env.example
+    ports:
+      - "4005:4005"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4005/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    networks:
+      - bookstore-micro-net
+
+  reporting-service:
+    build:
+      context: ./services/reporting-service
+      dockerfile: Dockerfile
+    container_name: book-reporting-service
+    restart: unless-stopped
+    env_file:
+      - ./services/reporting-service/.env.example
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - REPORTING_DB_NAME=book_reporting
+      - CHECKOUT_SERVICE_URL=http://checkout-service:4003
+      - IDENTITY_SERVICE_URL=http://identity-service:4001
+    ports:
+      - "4006:4006"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      checkout-service:
+        condition: service_healthy
+      identity-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4006/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    networks:
+      - bookstore-micro-net
+
+  support-service:
+    build:
+      context: ./services/support-service
+      dockerfile: Dockerfile
+    container_name: book-support-service
+    restart: unless-stopped
+    env_file:
+      - ./services/support-service/.env.example
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - SUPPORT_DB_NAME=book_support
+      - NOTIFICATION_SERVICE_URL=http://notification-service:4005
+    ports:
+      - "4007:4007"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      notification-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4007/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    networks:
+      - bookstore-micro-net
+
+  api-gateway:
+    build:
+      context: ./apps/api-gateway
+      dockerfile: Dockerfile
+    container_name: book-api-gateway
+    restart: unless-stopped
+    env_file:
+      - ./apps/api-gateway/.env.example
+    environment:
+      - IDENTITY_SERVICE_URL=http://identity-service:4001
+      - CATALOG_SERVICE_URL=http://catalog-service:4002
+      - CHECKOUT_SERVICE_URL=http://checkout-service:4003
+      - MEDIA_SERVICE_URL=http://media-service:4004
+      - NOTIFICATION_SERVICE_URL=http://notification-service:4005
+      - REPORTING_SERVICE_URL=http://reporting-service:4006
+      - SUPPORT_SERVICE_URL=http://support-service:4007
+    ports:
+      - "8080:8080"
+    depends_on:
+      identity-service:
+        condition: service_healthy
+      catalog-service:
+        condition: service_healthy
+      checkout-service:
+        condition: service_healthy
+      media-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+      reporting-service:
+        condition: service_healthy
+      support-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+    networks:
+      - bookstore-micro-net
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://localhost:8080
+    container_name: book-web
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+    networks:
+      - bookstore-micro-net
+
+volumes:
+  mongo_micro_data:
+
+networks:
+  bookstore-micro-net:
+    driver: bridge

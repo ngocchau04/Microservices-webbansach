@@ -1,0 +1,49 @@
+@startuml Simple Pie Chart
+
+!theme plain
+
+title Test Case Execution Summary
+
+' Simple visual representation of pie chart
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor black
+}
+
+' Main pie chart representation
+circle "TEST RESULTS\n127 Total Cases" as center
+
+' Large green section - Passed (84.3%)
+rectangle "✅ PASSED\n107 cases\n84.3%" as passed #90EE90
+
+' Smaller red section - Failed (15.7%) 
+rectangle "❌ FAILED\n20 cases\n15.7%" as failed #FF6B6B
+
+' Very small sections
+rectangle "⚪ BLOCKED\n0 cases\n0%" as blocked #D3D3D3
+rectangle "⏸️ NOT RUN\n0 cases\n0%" as notrun #FFD93D
+
+' Position them around the center
+center --> passed : 84.3%
+center --> failed : 15.7%
+center --> blocked : 0%
+center --> notrun : 0%
+
+' Legend box
+rectangle "LEGEND" as legend {
+  rectangle "🟢 Test Cases Passed: 107 (84.3%)" #90EE90
+  rectangle "🔴 Test Cases Failed: 20 (15.7%)" #FF6B6B
+  rectangle "⚪ Test Cases Blocked: 0 (0%)" #D3D3D3
+  rectangle "🟡 Test Cases Not Run: 0 (0%)" #FFD93D
+}
+
+' Summary stats
+note bottom
+  **Project:** ktpm-webbansach
+  **Execution Date:** December 2025
+  **Total Duration:** 16 seconds
+  **Pass Rate:** 84.3%
+  **Modules Tested:** 6
+end note
+
+@enduml

@@ -1,0 +1,29 @@
+{
+  "name": "bookstore-microservices",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Bookstore microservices monorepo",
+  "scripts": {
+    "dev:web": "npm --prefix apps/web run dev",
+    "dev:gateway": "npm --prefix apps/api-gateway run dev",
+    "dev:identity": "npm --prefix services/identity-service run dev",
+    "dev:catalog": "npm --prefix services/catalog-service run dev",
+    "dev:checkout": "npm --prefix services/checkout-service run dev",
+    "dev:media": "npm --prefix services/media-service run dev",
+    "dev:notify": "npm --prefix services/notification-service run dev",
+    "dev:reporting": "npm --prefix services/reporting-service run dev",
+    "dev:support": "npm --prefix services/support-service run dev",
+    "test:identity": "npm --prefix services/identity-service test",
+    "test:catalog": "npm --prefix services/catalog-service test",
+    "test:checkout": "npm --prefix services/checkout-service test",
+    "test:smoke": "npm run test:identity && npm run test:catalog && npm run test:checkout",
+    "seed:identity": "npm --prefix services/identity-service run seed",
+    "seed:catalog": "npm --prefix services/catalog-service run seed",
+    "seed:checkout": "npm --prefix services/checkout-service run seed",
+    "seed:support": "npm --prefix services/support-service run seed",
+    "seed:all": "npm run seed:identity && npm run seed:catalog && npm run seed:checkout && npm run seed:support",
+    "compose:up": "docker compose -f docker-compose.micro.yml up --build --remove-orphans",
+    "compose:down": "docker compose -f docker-compose.micro.yml down --remove-orphans",
+    "compose:logs": "docker compose -f docker-compose.micro.yml logs -f"
+  }
+}

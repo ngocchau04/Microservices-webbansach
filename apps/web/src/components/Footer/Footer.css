@@ -1,0 +1,41 @@
+.fter {
+  /*background-color: #e4e4e4;*/
+  background: radial-gradient(circle at 10% 20%, rgb(238, 56, 56) 0%, rgba(206, 21, 0, 0.92) 90.1%);
+  font-family: Arial, Helvetica, sans-serif;
+  color: #ffffff;
+}
+
+.footer h1 {
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  text-align: center;
+  margin-top: 10px;
+  color: #FFD700;
+}
+
+.footer-chu {
+  text-align: center;
+  font-size: 20px;
+}
+
+.footer-mxh {
+  text-align: center;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.footer-mxh a {
+  color: white;
+  text-decoration: none;
+  display: inline-block;
+  margin: 0 20px 0 20px;
+}
+
+.footer-mxh a:hover {
+  transition: transform 0.3s ease;
+  transform: translateY(5px);
+  color: white;
+  font-weight: bold;
+}
+
+.footer-nam {
+  text-align: center;
+}

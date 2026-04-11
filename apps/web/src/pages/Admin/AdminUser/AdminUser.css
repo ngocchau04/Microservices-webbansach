@@ -1,0 +1,96 @@
+h1 {
+    color: #CD0000;
+    text-align: center;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+td {
+    border: 1px solid #ddd; 
+    padding: 8px;
+    text-align: left;
+}
+th {
+    background-color: #f4f4f4;
+    text-align: center;
+    border: 1px solid #ddd; 
+    padding: 8px;
+}
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+.stt{
+    text-align: center;
+}
+.ttct{
+    text-align: center;
+}
+.ttct:hover{
+    cursor: pointer;
+    text-decoration: underline;
+}
+.pagination{
+    text-align: center;
+}
+.arrow{
+    font-size: 20px;
+    background-color: #ffffff;
+    padding: none;
+    border: 1px solid ;
+    border-radius: 2px;
+    cursor: pointer;
+}
+.adusdehd{
+    display: flex;
+    justify-content: space-between;
+}
+.adusdehd button{
+    font-size: 30px;
+    border: none;
+    background-color: #ffffff;
+    cursor: pointer;
+    color: #CD0000;
+}
+.adusdehd button:hover{
+    color: #FFD700;
+}
+.adush3{
+    margin-top: 15px;
+    margin-bottom: 5px;
+}
+.kardspp{
+    border: 1.5px solid black;
+    border-radius: 5px;
+    box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.1);
+    padding: none;
+    margin-left: 20px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    width: 200px;
+    height: auto;
+    display: inline-block;
+    background-color: rgb(255, 255, 255);
+}
+.kardspp-image{
+    width: 100%;
+    height: 200px;
+    border-radius: 5px 5px 0 0;
+    margin-bottom: 0px;
+    /*cursor: pointer;*/
+}
+.kardspp-title{
+    font-family: Arial, Helvetica, sans-serif;
+    margin-top: 0px;
+    margin-left: 5px;
+    color:#000000;
+    min-height: 100px;
+}
+.kardspp-price{
+    margin-left: 5px;
+    font-family: Arial, Helvetica, sans-serif;
+    margin-bottom: 2px;
+    color: #000000;
+    text-align: center;
+}

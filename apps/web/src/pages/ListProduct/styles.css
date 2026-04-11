@@ -1,0 +1,21 @@
+.list_product{
+    width: 100%;
+    padding: 10px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-top: 20px;
+    text-align: center;
+}
+
+.list_productlayout{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+}
+#btn_detail:hover{
+    background-color: #f5f5f5;
+    color: #000;
+}

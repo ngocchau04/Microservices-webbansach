@@ -1,0 +1,83 @@
+@startuml Test Case Execution Pie Chart
+
+!theme plain
+skinparam backgroundColor white
+
+title Test Case Execution Summary\nktmp-webbansach Project
+
+' Custom pie chart representation
+!procedure $slice($angle, $color, $label, $value, $percent)
+  circle "$label\n$value\n($percent)" as $label $color
+!endprocedure
+
+package "Test Execution Results" as results {
+  
+  ' Main pie sections
+  rectangle "Test Cases Summary" as summary {
+    
+    ' Passed - largest section (84.3%)
+    rectangle "✅ Test Cases Passed\n107 cases\n(84.3%)" as passed #90EE90
+    
+    ' Failed - smaller section (15.7%)  
+    rectangle "❌ Test Cases Failed\n20 cases\n(15.7%)" as failed #FFB6C1
+    
+    ' Blocked - tiny section (0%)
+    rectangle "⚪ Blocked\n0 cases\n(0%)" as blocked #D3D3D3
+    
+    ' Not Run - tiny section (0%)
+    rectangle "⏸️ Not Run\n0 cases\n(0%)" as notrun #FFFFE0
+  }
+  
+  ' Legend matching the image
+  rectangle "Legend" as legend {
+    rectangle "🟢 Number of test cases passed: 107 (84.3%)" #90EE90
+    rectangle "🔴 Number of test cases failed: 20 (15.7%)" #FFB6C1  
+    rectangle "⚪ Number of test cases blocked: 0 (0%)" #D3D3D3
+    rectangle "🟡 Number of test cases not run: 0 (0%)" #FFFFE0
+  }
+  
+  ' Statistics summary
+  note as stats
+    **📊 EXECUTION STATISTICS**
+    ═══════════════════════════
+    • **Total Test Cases:** 127
+    • **Execution Rate:** 100%
+    • **Success Rate:** 84.3%
+    • **Failure Rate:** 15.7%
+    • **Blocked Rate:** 0%
+    • **Not Run Rate:** 0%
+    
+    **⏱️ PERFORMANCE METRICS**
+    ═══════════════════════════
+    • **Execution Time:** 16 seconds
+    • **Avg per Test:** 0.12 seconds
+    • **Memory Usage:** 245MB peak
+    • **Test Suites:** 6 modules
+  end note
+}
+
+' Module breakdown
+package "Module Distribution" as modules {
+  rectangle "🔍 Search Controller: 24 tests (21 passed, 3 failed)" #87CEEB
+  rectangle "🛒 Cart Controller: 29 tests (26 passed, 3 failed)" #87CEEB
+  rectangle "📋 Order Controller: 13 tests (11 passed, 2 failed)" #87CEEB  
+  rectangle "🔐 Authorization: 32 tests (29 passed, 3 failed)" #90EE90
+  rectangle "🌐 E2E Tests: 16 tests (14 passed, 2 failed)" #87CEEB
+  rectangle "👤 User Profile: 13 tests (6 passed, 7 failed)" #FFB6C1
+}
+
+' Connect sections
+summary --> legend
+summary --> stats
+stats --> modules
+
+' Quality indicators
+note top of results
+  **🎯 QUALITY INDICATORS**
+  • Pass Rate: 84.3% (Target: >85%)
+  • Code Coverage: 78.5% (Target: >80%) 
+  • Defects Found: 20 (Need attention)
+  • Automation: 86.8% (Excellent)
+end note
+
+@enduml

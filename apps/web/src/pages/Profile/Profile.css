@@ -1,0 +1,147 @@
+.content {
+    flex-grow: 1;
+    padding: 20px;
+    background-color: #fff;
+    font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+}
+
+.content h1 {
+    margin-bottom: 20px;
+    text-align: center;
+    color: #CD0000;
+}
+
+.content-button {
+    margin-left: 10px;
+    background-color: #ffffff;
+    color: rgb(0, 0, 0);
+    border: none;
+    cursor: pointer;
+    font-size: 20px;
+}
+.content-button:hover {
+    background-color: #ffffff;
+    color:#CD0000;
+}
+
+.info-item{
+    margin-bottom: 10px;
+    font-size: 20px;
+    margin-left: 100px;
+}
+
+.info-item input{
+    padding: 5px;
+    font-size: 20px;
+    border: 1px solid black;
+    border-radius: 5px;
+}
+.content-button2{
+    padding: 5px 5px 2px 5px;
+    margin-left: 5px;
+    background-color: #ffffff;
+    border: 1px solid;
+    border-radius: 3px;
+    font-size: 15px;
+    color: #000000;
+}
+.content-button2:hover{
+    background-color: #CD0000;
+    color: #ffffff;
+    cursor: pointer;
+    border: 1px solid black;
+    border-radius: 2px;
+}
+.content-button22{
+  padding: 5px 5px 2px 5px;
+  margin-left: 5px;
+  background-color: #ffffff;
+  border: none;
+  font-size: 20px;
+  color: #000000;
+}
+.content-button22:hover{
+  background-color: #ffffff;
+  color: #CD0000;
+  cursor: pointer;
+  border: none;
+} 
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+th {
+    background-color: #f4f4f4;
+    text-align: center;
+}
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+.stt{
+    text-align: center;
+}
+
+.cardsppp{
+  border: 1.5px solid black;
+  border-radius: 5px;
+  box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.1);
+  padding: none;
+  margin-left: 20px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  width: 200px;
+  height: auto;
+  display: inline-block;
+  background-color: rgb(255, 255, 255);
+}
+
+.cardsppp-image{
+  width: 100%;
+  height: 200px;
+  border-radius: 5px 5px 0 0;
+  margin-bottom: 0px;
+  cursor: pointer;
+} 
+
+.cardsppp-title{
+  font-family: Arial, Helvetica, sans-serif;
+  margin-top: 0px;
+  margin-left: 5px;
+  color:#000000;
+  min-height: 80px;
+}
+
+.cardsppp-price{
+  margin-left: 5px;
+  font-family: Arial, Helvetica, sans-serif;
+  margin-bottom: 2px;
+  color: #000000;
+}
+
+.cardsppp-button{
+  width: 100%;
+  border-radius: 0 0 5px 5px;
+  border: none;
+  background-color: #CD0000;
+  padding: 5px;
+  margin: none;
+}
+
+.cardsppp-button:hover{
+  cursor: pointer;
+  color: #000000;
+  background-color: #FFD700;
+}
+.thong-tin-ca-nhan{
+  max-width: 480px;
+  margin: 0 auto; /* Căn giữa theo chiều ngang */
+  text-align: left; /* Giữ chữ căn thẳng bên trái */
+  position: relative; /* Cần nếu dùng flex/absolute để căn giữa */
+}

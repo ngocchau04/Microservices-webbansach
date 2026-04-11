@@ -1,0 +1,100 @@
+name: CI-CD Docker
+
+on:
+  push:
+    branches: [ "main" ]     # đổi nếu bạn dùng branch khác
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # =========================
+  # 1) BUILD – cài deps & build FrontEnd
+  # =========================
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Frontend: cài & build (dùng Dockerfile của bạn cũng được,
+      # nhưng ở đây build bằng Node để bắt lỗi sớm)
+      - name: Install Frontend deps
+        working-directory: ./FrontEnd
+        run: npm ci
+
+      - name: Build Frontend
+        working-directory: ./FrontEnd
+        run: npm run build
+
+      # Backend: cài deps (để bước test dùng)
+      - name: Install Backend deps
+        working-directory: ./Backend
+        run: npm ci --legacy-peer-deps
+
+  # =========================
+  # 2) TEST – chạy Jest + MongoDB
+  # =========================
+  test:
+    needs: build          # chỉ test khi build OK
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:6
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd="mongosh --eval 'db.adminCommand({ ping: 1 })'"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=5s
+
+    env:
+      NODE_ENV: test
+      # dùng DB test riêng
+      MONGO_URI: mongodb://localhost:27017/ktpm_webbansach_test
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Backend deps
+        working-directory: ./Backend
+        run: npm ci --legacy-peer-deps
+
+      - name: Run Backend tests
+        working-directory: ./Backend
+        run: npm test
+
+  # =========================
+  # 3) DEPLOY – Docker Compose (CD)
+  # =========================
+  deploy:
+    needs: test           # chỉ deploy khi test PASS
+    runs-on: self-hosted  # runner cài trên máy bạn (Docker Desktop)
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Show docker compose file
+        run: |
+          ls
+          cat docker-compose.yml
+
+      - name: Deploy with Docker Compose
+        run: |
+          docker compose down
+          docker compose up -d --build

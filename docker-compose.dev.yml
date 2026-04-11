@@ -1,0 +1,14 @@
+# Legacy dev compose is intentionally disabled.
+# Use: docker compose -f docker-compose.micro.yml up --build
+
+services:
+  legacy-dev-compose-disabled:
+    image: alpine:3.20
+    container_name: legacy-dev-compose-disabled
+    command:
+      - /bin/sh
+      - -c
+      - |
+        echo "[LEGACY DEV DISABLED] Use microservices runtime instead.";
+        echo "Use: docker compose -f docker-compose.micro.yml up --build";
+        exit 1
