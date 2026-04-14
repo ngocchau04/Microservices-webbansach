@@ -26,7 +26,7 @@ const toMimeTypes = (value) => {
 
 const getEnvConfig = () => ({
   port: toPositiveNumber(process.env.PORT, DEFAULT_PORT),
-  jwtSecret: process.env.JWT_SECRET || process.env.SECRET_KEY || "your_secret_key",
+  jwtSecret: process.env.JWT_SECRET || process.env.SECRET_KEY || "",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "1h",
   cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || "",
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || "",

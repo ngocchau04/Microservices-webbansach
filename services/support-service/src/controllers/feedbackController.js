@@ -15,11 +15,35 @@ const submitFeedback = async (req, res) => {
   return sendServiceResult(res, result);
 };
 
+const createAssistantHandoff = async (req, res) => {
+  const result = await feedbackService.createOrOpenAssistantHandoff({
+    payload: req.body,
+  });
+  return sendServiceResult(res, result);
+};
+
 const getMyFeedback = async (req, res) => {
   const result = await feedbackService.listMyFeedback({
     userId: req.user.userId,
   });
 
+  return sendServiceResult(res, result);
+};
+
+const getMyConversations = async (req, res) => {
+  const result = await feedbackService.listMyConversations({
+    userId: req.user.userId,
+  });
+  return sendServiceResult(res, result);
+};
+
+const postMyConversationMessage = async (req, res) => {
+  const result = await feedbackService.addConversationMessage({
+    feedbackId: req.params.id,
+    sender: "user",
+    content: req.body.message,
+    actorUserId: req.user.userId,
+  });
   return sendServiceResult(res, result);
 };
 
@@ -38,9 +62,23 @@ const updateAdminFeedbackStatus = async (req, res) => {
   return sendServiceResult(res, result);
 };
 
+const postAdminConversationMessage = async (req, res) => {
+  const result = await feedbackService.addConversationMessage({
+    feedbackId: req.params.id,
+    sender: "admin",
+    content: req.body.message,
+    actorUserId: req.user.userId,
+  });
+  return sendServiceResult(res, result);
+};
+
 module.exports = {
   submitFeedback,
+  createAssistantHandoff,
   getMyFeedback,
+  getMyConversations,
+  postMyConversationMessage,
   getAdminFeedback,
   updateAdminFeedbackStatus,
+  postAdminConversationMessage,
 };

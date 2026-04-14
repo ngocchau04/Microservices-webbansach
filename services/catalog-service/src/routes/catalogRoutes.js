@@ -1,5 +1,5 @@
 const express = require("express");
-const { healthCheck } = require("../controllers/healthController");
+const { healthCheck, readyCheck } = require("../controllers/healthController");
 const productController = require("../controllers/productController");
 const searchController = require("../controllers/searchController");
 const reviewController = require("../controllers/reviewController");
@@ -13,6 +13,7 @@ const createCatalogRoutes = (config) => {
   const optionalAuth = authOptional(config);
 
   router.get("/health", healthCheck);
+  router.get("/ready", readyCheck);
 
   router.get("/products", asyncHandler(productController.listProducts));
   router.get("/products/:id", asyncHandler(productController.getProductById));

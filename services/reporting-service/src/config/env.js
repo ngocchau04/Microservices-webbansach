@@ -19,7 +19,7 @@ const getEnvConfig = () => ({
   port: toNumber(process.env.PORT, DEFAULT_PORT),
   mongoUri: process.env.MONGO_URI || "mongodb://localhost:27017",
   dbName: process.env.REPORTING_DB_NAME || DEFAULT_DB_NAME,
-  jwtSecret: process.env.JWT_SECRET || process.env.SECRET_KEY || "your_secret_key",
+  jwtSecret: process.env.JWT_SECRET || process.env.SECRET_KEY || "",
   checkoutServiceUrl: trimSlash(process.env.CHECKOUT_SERVICE_URL || DEFAULT_CHECKOUT_SERVICE_URL),
   checkoutRequestTimeoutMs: toNumber(process.env.CHECKOUT_REQUEST_TIMEOUT_MS, DEFAULT_TIMEOUT_MS),
   identityServiceUrl: trimSlash(process.env.IDENTITY_SERVICE_URL || DEFAULT_IDENTITY_SERVICE_URL),

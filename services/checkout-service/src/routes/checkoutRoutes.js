@@ -1,5 +1,5 @@
-﻿const express = require("express");
-const { healthCheck } = require("../controllers/healthController");
+const express = require("express");
+const { healthCheck, readyCheck } = require("../controllers/healthController");
 const cartController = require("../controllers/cartController");
 const voucherController = require("../controllers/voucherController");
 const orderController = require("../controllers/orderController");
@@ -13,6 +13,7 @@ const createCheckoutRoutes = (config) => {
   const requireAuth = authRequired(config);
 
   router.get("/health", healthCheck);
+  router.get("/ready", readyCheck);
 
   router.get("/cart", requireAuth, asyncHandler(cartController.getCart));
   router.post("/cart/items", requireAuth, asyncHandler(cartController.addCartItem));

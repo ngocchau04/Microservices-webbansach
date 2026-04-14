@@ -1,3 +1,5 @@
+const mongoose = require("mongoose");
+
 const healthCheck = (req, res) =>
   res.status(200).json({
     success: true,
@@ -8,6 +10,32 @@ const healthCheck = (req, res) =>
     },
   });
 
+const readyCheck = (req, res) => {
+  const ok = mongoose.connection.readyState === 1;
+  if (ok) {
+    return res.status(200).json({
+      success: true,
+      data: {
+        service: "support-service",
+        ready: true,
+        mongo: "connected",
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
+
+  return res.status(503).json({
+    success: false,
+    message: "MongoDB not connected",
+    code: "SERVICE_NOT_READY",
+    service: "support-service",
+    ready: false,
+    mongo: "disconnected",
+    timestamp: new Date().toISOString(),
+  });
+};
+
 module.exports = {
   healthCheck,
+  readyCheck,
 };

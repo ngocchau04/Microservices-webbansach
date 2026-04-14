@@ -1,13 +1,30 @@
-const postWithTimeout = async ({ url, payload, timeoutMs, notificationRequired }) => {
+const jwt = require("jsonwebtoken");
+
+const createInternalToken = (config) =>
+  !config.jwtSecret
+    ? ""
+    :
+  jwt.sign(
+    {
+      internal: true,
+      service: "support-service",
+    },
+    config.jwtSecret,
+    { expiresIn: "2m" }
+  );
+
+const postWithTimeout = async ({ url, payload, timeoutMs, notificationRequired, config }) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     try {
+      const internalToken = createInternalToken(config);
       const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(internalToken ? { Authorization: `Bearer ${internalToken}` } : {}),
         },
         body: JSON.stringify(payload),
         signal: controller.signal,
@@ -56,6 +73,7 @@ const sendSupportAckEmail = async ({
     url,
     timeoutMs: config.notificationRequestTimeoutMs,
     notificationRequired: config.notificationRequired,
+    config,
     payload: {
       email,
       customerName,

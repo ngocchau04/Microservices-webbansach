@@ -1,0 +1,23 @@
+[
+  {
+    "id": "shipping",
+    "topicKey": "policy_shipping",
+    "title": "Chính sách vận chuyển",
+    "body": "Đơn hàng được xử lý trong giờ làm việc. Thời gian giao hàng phụ thuộc khu vực; bạn có thể theo dõi trạng thái trong mục đơn hàng sau khi đặt thành công.",
+    "keywords": ["giao hàng", "ship", "vận chuyển", "delivery"]
+  },
+  {
+    "id": "returns",
+    "topicKey": "policy_returns",
+    "title": "Đổi trả và hoàn tiền",
+    "body": "Sách lỗi in ấn hoặc hư hỏng do vận chuyển có thể được hỗ trợ đổi trong thời hạn quy định. Vui lòng giữ nguyên tem và bao bì khi cần xử lý đổi trả.",
+    "keywords": ["đổi trả", "hoàn tiền", "refund", "lỗi"]
+  },
+  {
+    "id": "contact",
+    "topicKey": "policy_contact",
+    "title": "Liên hệ hỗ trợ",
+    "body": "Bạn có thể gửi phản hồi trong tài khoản hoặc qua kênh hỗ trợ của cửa hàng. Đội ngũ sẽ phản hồi trong khung giờ làm việc.",
+    "keywords": ["liên hệ", "hỗ trợ", "support", "feedback"]
+  }
+]

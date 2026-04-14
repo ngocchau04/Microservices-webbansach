@@ -1,24 +1,24 @@
-    .navbar {
+.navbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0px;
+    padding: 0 12px;
     width: 100%;
-    /*position: fixed;*/
-    transition: all 0.5s;
+    transition: all 0.3s ease;
     top: 0;
     left: 0;
     background: radial-gradient(circle at 10% 20%, rgb(238, 56, 56) 0%, rgba(206, 21, 0, 0.92) 90.1%);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
 }
 .logo_container{
-    padding: 15px;
+    padding: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 .logo {
-    width: 120px;
-    object-fit: contain; /* Giữ tỉ lệ ảnh trong khung, thêm khoảng trắng nếu cần */
+    width: 122px;
+    object-fit: contain;
   }
   
   
@@ -31,26 +31,36 @@
       align-items: center;
       justify-content: center;
       position: relative;
+      max-width: 780px;
+      width: 100%;
   }
         
   .tim-kiem {
-      padding: 8px;
-      padding-right: 30px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
+      padding: 10px 42px 10px 14px;
+      border-radius: 999px;
+      border: 1px solid #f7b0a8;
       margin: 0 10px;
       width: 60vw;
-      height: 3vw;
+      height: 42px;
+      min-height: 42px;
       flex: 1;
+      font-size: 14px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .tim-kiem:focus {
+      outline: none;
+      border-color: #ffd26a;
+      box-shadow: 0 0 0 3px rgba(255, 210, 106, 0.25);
   }
         
   .search-icon {
       color: #CD0000;
       position: absolute;
-      font-size: 18px;
+      font-size: 17px;
       top: 50%;
-      right: 20px; 
-      transform: translateY(-40%);
+      right: 26px; 
+      transform: translateY(-50%);
   }
         
   .search-icon:hover{
@@ -62,39 +72,44 @@
       background-color: transparent;
       border: none;
       color: #ffffff;
-      padding: 8px 15px;
+      padding: 10px 14px;
       margin: 0 5px;
       cursor: pointer;
-      font-size: 15px;
-      font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+      font-size: 14px;
+      font-family: "Inter", Arial, Helvetica, sans-serif;
       font-weight: 600;
       display: flex;
       flex-direction: column;
       align-items: center;
+      border-radius: 8px;
+      transition: color 0.2s ease, background-color 0.2s ease;
   }
   
   .nav2:hover{
       color: #FFD700;
+      background-color: rgba(255, 255, 255, 0.1);
   }
 
   .navv2 {
     background-color: transparent;
     border: none;
     color: #ffffff;
-    padding: 8px 15px;
+    padding: 8px 12px;
     margin: 0 5px;
     cursor: pointer;
     font-size: 30px;
-    font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+    font-family: "Inter", Arial, Helvetica, sans-serif;
     font-weight: 600;
     display: flex;
     flex-direction: column;
     align-items: center;
+    border-radius: 8px;
+    transition: color 0.2s ease, background-color 0.2s ease;
     }
 
     .navv2:hover{
     color: #FFD700;
-    background-color: transparent;
+    background-color: rgba(255, 255, 255, 0.1);
     }
     .gio_hang {
         position: relative;
@@ -102,13 +117,18 @@
 
     .total_cart {
         position: absolute;
-        top: 5px;
-        right: 5px;
+        top: 2px;
+        right: 2px;
         background-color: #FF0000;
         color: #FFFFFF;
         border-radius: 50%;
-        padding: 2px 6px;
-        font-size: 12px;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 5px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
         font-weight: bold;
     }
 

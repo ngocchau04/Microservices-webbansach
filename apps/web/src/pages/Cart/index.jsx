@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import "./Cart.css";
 import { useUser } from "../../context/UserContext";
 import { useNavigate } from "react-router-dom";
@@ -206,54 +206,103 @@ function Cart() {
     setCount(0);
   };
 
+  const hasItems = cartItems.length > 0;
+
   return (
-    <div className="cart-container">
-      <h2>Gio hang cua ban</h2>
-      <div className="cart-items">
-        {cartItems.map((item) => (
-          <div key={item._id} className="cart-item">
-            <input
-              type="checkbox"
-              name={item.productId}
-              checked={checkeds.includes(item.productId)}
-              onChange={handleCheck}
-            />
-            <img src={item.image} alt={item.title} className="cart-item-image" />
-            <div className="cart-item-info">
-              <h3 className="cart-item-title">{item.title}</h3>
-              <p>Gia: {formatPrice(item.price)}</p>
-              <h4>So luong: {item.quantity}</h4>
-              <p>Thanh tien: {formatPrice(item.price * item.quantity)}</p>
-            </div>
-            <div className="cart-item-actions">
-              <button onClick={() => handleDecreaseQuantity(item.productId)}>-</button>
-              <button onClick={() => handleIncreaseQuantity(item.productId)}>+</button>
-              <button onClick={() => handleDelete(item.productId)}>Xoa</button>
+    <div className="cart-page">
+      <div className="cart-page__inner">
+        <header className="cart-page__header">
+          <h2 className="cart-page__title">Gio hang cua ban</h2>
+          <p className="cart-page__subtitle">Kiem tra san pham va dat hang khi san sang</p>
+        </header>
+
+        <div className={`cart-page__grid${!hasItems ? " cart-page__grid--empty" : ""}`}>
+          <div className="cart-page__main">
+            <div className="cart-page__main-panel">
+              <div className="cart-items">
+                {!hasItems ? (
+                  <div className="cart-page__empty">
+                    <p className="cart-page__empty-title">Gio hang dang trong</p>
+                    <p className="cart-page__empty-text">Hay them sach vao gio hang de tiep tuc mua sam.</p>
+                  </div>
+                ) : (
+                  cartItems.map((item) => (
+                    <div key={item._id} className="cart-item">
+                      <label className="cart-item__check">
+                        <input
+                          type="checkbox"
+                          name={item.productId}
+                          checked={checkeds.includes(item.productId)}
+                          onChange={handleCheck}
+                        />
+                      </label>
+                      <img src={item.image} alt={item.title || "San pham"} className="cart-item-image" />
+                      <div className="cart-item-info">
+                        <h3 className="cart-item-title">{item.title}</h3>
+                        <p className="cart-item-price-line">Don gia: {formatPrice(item.price)}</p>
+                        <p className="cart-item-qty-label">So luong: {item.quantity}</p>
+                        <p className="cart-item-line-total">Thanh tien: {formatPrice(item.price * item.quantity)}</p>
+                      </div>
+                      <div className="cart-item-actions">
+                        <div className="cart-item-stepper">
+                          <button type="button" className="cart-item-stepper__btn" onClick={() => handleDecreaseQuantity(item.productId)} aria-label="Giam">
+                            −
+                          </button>
+                          <button type="button" className="cart-item-stepper__btn" onClick={() => handleIncreaseQuantity(item.productId)} aria-label="Tang">
+                            +
+                          </button>
+                        </div>
+                        <button type="button" className="cart-item-remove" onClick={() => handleDelete(item.productId)}>
+                          Xoa
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {hasItems && (
+                <div className="cart-toolbar">
+                  <span className="cart-toolbar__label">Chon nhanh</span>
+                  <div className="cart-toolbar__actions">
+                    <button type="button" className="cart-toolbar__btn cart-toolbar__btn--primary" onClick={handleCheckAll}>
+                      Chon tat ca
+                    </button>
+                    <button type="button" className="cart-toolbar__btn cart-toolbar__btn--ghost" onClick={handleUncheckAll}>
+                      Bo chon tat ca
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        ))}
-      </div>
 
-      <div>
-        <button className="buttonCheckAll" onClick={handleCheckAll}>
-          Chon tat ca
-        </button>
-        <button className="buttonCheckAll" onClick={handleUncheckAll}>
-          Bo chon tat ca
-        </button>
-      </div>
-
-      <div className="cart-summary">
-        <p>So luong san pham da chon: {count}</p>
-        <p>Giam gia: {formatPrice(discount)}</p>
-        <p>Tong tien: {formatPrice(total)}</p>
-        <button className="checkout-button" onClick={handleCheckout}>
-          Dat hang
-        </button>
+          <aside className="cart-summary cart-summary--sticky">
+            <div className="cart-summary__accent" aria-hidden="true" />
+            <h3 className="cart-summary__heading">Tom tat don hang</h3>
+            <p className="cart-summary__hint">Ap dung cho san pham da tick chon</p>
+            <div className="cart-summary__rows">
+              <div className="cart-summary__row">
+                <span className="cart-summary__label">So luong san pham da chon</span>
+                <span className="cart-summary__value">{count}</span>
+              </div>
+              <div className="cart-summary__row">
+                <span className="cart-summary__label">Giam gia</span>
+                <span className="cart-summary__value cart-summary__value--muted">{formatPrice(discount)}</span>
+              </div>
+              <div className="cart-summary__row cart-summary__row--total">
+                <span className="cart-summary__label">Tong tien</span>
+                <span className="cart-summary__total">{formatPrice(total)}</span>
+              </div>
+            </div>
+            <button type="button" className="checkout-button" onClick={handleCheckout} disabled={!count}>
+              Dat hang
+            </button>
+          </aside>
+        </div>
       </div>
     </div>
   );
 }
 
 export default Cart;
-

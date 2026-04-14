@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import "./AdminOrder.css";
 import { FaArrowLeft } from "react-icons/fa6";
 import { getProducts } from "../../../api/catalogApi";
@@ -135,6 +135,8 @@ function AdminOrder() {
 
   const selectedStatus = getOrderStatus(selectedOrder);
 
+  const filteredOrders = orders.filter((order) => getOrderStatus(order) === statusByTab[tab]);
+
   return (
     <>
       {selectedOrderId && selectedOrder ? (
@@ -213,50 +215,96 @@ function AdminOrder() {
           </div>
         </div>
       ) : (
-        <>
-          <div className="adorderbut">
-            <button className="dhbutton" onClick={() => setTab("cxn")}>Cho xac nhan</button>
-            <button className="dhbutton" onClick={() => setTab("cvc")}>Da xac nhan</button>
-            <button className="dhbutton" onClick={() => setTab("dvc")}>Dang van chuyen</button>
-            <button className="dhbutton" onClick={() => setTab("ht")}>Hoan tat</button>
-            <button className="dhbutton" onClick={() => setTab("dh")}>Don hoan</button>
-            <button className="dhbutton" onClick={() => setTab("dhh")}>Don huy</button>
+        <div className="admin-order">
+          <div className="adorderbut admin-order__filters">
+            <button
+              type="button"
+              className={`dhbutton${tab === "cxn" ? " dhbutton--active" : ""}`}
+              onClick={() => setTab("cxn")}
+            >
+              Cho xac nhan
+            </button>
+            <button
+              type="button"
+              className={`dhbutton${tab === "cvc" ? " dhbutton--active" : ""}`}
+              onClick={() => setTab("cvc")}
+            >
+              Da xac nhan
+            </button>
+            <button
+              type="button"
+              className={`dhbutton${tab === "dvc" ? " dhbutton--active" : ""}`}
+              onClick={() => setTab("dvc")}
+            >
+              Dang van chuyen
+            </button>
+            <button
+              type="button"
+              className={`dhbutton${tab === "ht" ? " dhbutton--active" : ""}`}
+              onClick={() => setTab("ht")}
+            >
+              Hoan tat
+            </button>
+            <button
+              type="button"
+              className={`dhbutton${tab === "dh" ? " dhbutton--active" : ""}`}
+              onClick={() => setTab("dh")}
+            >
+              Don hoan
+            </button>
+            <button
+              type="button"
+              className={`dhbutton${tab === "dhh" ? " dhbutton--active" : ""}`}
+              onClick={() => setTab("dhh")}
+            >
+              Don huy
+            </button>
           </div>
-          <h1 style={{ textAlign: "center" }}>Danh sach don hang</h1>
-          <table>
-            <thead>
-              <tr>
-                <th>STT</th>
-                <th>Ma don</th>
-                <th>Ho va ten</th>
-                <th>SDT</th>
-                <th>Tong don</th>
-                <th>Phuong thuc thanh toan</th>
-                <th>Ngay dat</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders
-                .filter((order) => getOrderStatus(order) === statusByTab[tab])
-                .map((order, index) => {
-                  const shipping = getShipping(order);
-                  return (
-                    <tr key={order._id || index}>
-                      <td className="stt">{index + 1}</td>
-                      <td className="adormadh" onClick={() => viewOrder(order._id)}>
-                        {order._id}
-                      </td>
-                      <td>{shipping.name}</td>
-                      <td className="stt">{shipping.phone}</td>
-                      <td>{money(getTotal(order))}?</td>
-                      <td className="stt" style={{ width: "120px" }}>{getPaymentMethod(order)}</td>
-                      <td>{new Date(order.createdAt).toLocaleDateString("vi-VN")}</td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </>
+          <header className="admin-order__header">
+            <h1 className="admin-order__title">Danh sach don hang</h1>
+          </header>
+          <div className="admin-order__table-wrap">
+            <table className="admin-order__table">
+              <thead>
+                <tr>
+                  <th>STT</th>
+                  <th>Ma don</th>
+                  <th>Ho va ten</th>
+                  <th>SDT</th>
+                  <th>Tong don</th>
+                  <th>Phuong thuc thanh toan</th>
+                  <th>Ngay dat</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="admin-order__empty">
+                      Chua co don hang trong muc nay.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredOrders.map((order, index) => {
+                    const shipping = getShipping(order);
+                    return (
+                      <tr key={order._id || index}>
+                        <td className="stt">{index + 1}</td>
+                        <td className="adormadh" onClick={() => viewOrder(order._id)}>
+                          {order._id}
+                        </td>
+                        <td>{shipping.name}</td>
+                        <td className="stt">{shipping.phone}</td>
+                        <td>{money(getTotal(order))}?</td>
+                        <td className="stt admin-order__cell-pay">{getPaymentMethod(order)}</td>
+                        <td>{new Date(order.createdAt).toLocaleDateString("vi-VN")}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </>
   );

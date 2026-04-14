@@ -27,7 +27,7 @@ const getEnvConfig = () => ({
   port: toNumber(process.env.PORT, DEFAULT_PORT),
   mongoUri: process.env.MONGO_URI || "mongodb://localhost:27017",
   dbName: process.env.SUPPORT_DB_NAME || DEFAULT_DB_NAME,
-  jwtSecret: process.env.JWT_SECRET || process.env.SECRET_KEY || "your_secret_key",
+  jwtSecret: process.env.JWT_SECRET || process.env.SECRET_KEY || "",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "1h",
   notificationServiceUrl: trimSlash(
     process.env.NOTIFICATION_SERVICE_URL || DEFAULT_NOTIFICATION_SERVICE_URL
@@ -37,6 +37,7 @@ const getEnvConfig = () => ({
     DEFAULT_TIMEOUT_MS
   ),
   notificationRequired: toBoolean(process.env.NOTIFICATION_REQUIRED, false),
+  internalApiKey: process.env.SUPPORT_INTERNAL_API_KEY || "",
 });
 
 module.exports = {

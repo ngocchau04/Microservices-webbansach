@@ -1,5 +1,5 @@
 const express = require("express");
-const { healthCheck } = require("../controllers/healthController");
+const { healthCheck, readyCheck } = require("../controllers/healthController");
 const dashboardController = require("../controllers/dashboardController");
 const { authRequired, adminRequired } = require("../middleware/authMiddleware");
 const { asyncHandler } = require("../middleware/asyncHandler");
@@ -9,6 +9,7 @@ const createReportingRoutes = (config) => {
   const requireAuth = authRequired(config);
 
   router.get("/health", healthCheck);
+  router.get("/ready", readyCheck);
 
   router.get(
     "/dashboard/summary",

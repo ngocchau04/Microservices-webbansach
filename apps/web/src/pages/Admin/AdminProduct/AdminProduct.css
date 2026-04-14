@@ -12,7 +12,7 @@
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   }
   
-  .admin-product-container h1, h2 {
+  .admin-product-container h1, .admin-product-container h2 {
     text-align: center;
     font-weight: bold;
     color: rgba(206, 21, 0, 0.92);
@@ -44,8 +44,21 @@
     border-radius: 5px;
     font-size: 16px;
   }
+
+  .admin-product-actions textarea, .admin-product-edit textarea {
+    width: 100%;
+    min-height: 84px;
+    margin: 10px 0;
+    padding: 10px;
+    border: 1px solid rgba(206, 21, 0, 0.92);
+    border-radius: 5px;
+    font-size: 15px;
+    font-family: inherit;
+    resize: vertical;
+  }
   
-  .admin-product-actions input:focus, .admin-product-edit input:focus {
+  .admin-product-actions input:focus, .admin-product-edit input:focus,
+  .admin-product-actions textarea:focus, .admin-product-edit textarea:focus {
     outline: none;
     border-color: #FFD700;
     box-shadow: 0 0 5px #FFD700;

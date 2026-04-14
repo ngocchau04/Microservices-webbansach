@@ -35,7 +35,7 @@ const ClassicBrand = () => {
 
   // Hàm xử lý khi nhấp vào một phần tử
   const handleClick = (author) => {
-    navigate(`/list?author=${author}`); // Chuyển hướng đến trang chi tiết tác giả
+    navigate(`/list?author=${encodeURIComponent(author)}`);
   };
 
   return (
@@ -54,7 +54,9 @@ const ClassicBrand = () => {
         ))}
       </div>
       <div className="clabra-more">
-        <Link to="/list" className="viewAll">Xem tất cả</Link>
+        <Link to="/authors" className="viewAll">
+          Xem tất cả
+        </Link>
       </div>
     </div>
   );

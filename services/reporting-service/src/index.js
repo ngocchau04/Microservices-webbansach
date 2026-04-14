@@ -12,6 +12,15 @@ const {
 } = require("./middleware/httpMiddleware");
 
 const config = getEnvConfig();
+const validateConfig = () => {
+  if (process.env.NODE_ENV === "test") {
+    return;
+  }
+  if (!config.jwtSecret) {
+    throw new Error("JWT_SECRET (or SECRET_KEY) is required");
+  }
+};
+validateConfig();
 
 const createApp = () => {
   const app = express();

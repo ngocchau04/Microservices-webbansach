@@ -16,6 +16,33 @@ const mapLegacyFeedback = (feedback) => ({
   updatedAt: feedback.updatedAt,
 });
 
+const mapConversation = (feedback) => ({
+  _id: feedback._id,
+  userId: feedback.userId,
+  userEmail: feedback.userEmail,
+  subject: feedback.subject,
+  status: feedback.status,
+  handoffState: feedback.handoffState || "bot_only",
+  channel: feedback.channel || "feedback",
+  sessionId: feedback.sessionId || "",
+  latestMessage:
+    feedback.messages && feedback.messages.length ? feedback.messages[feedback.messages.length - 1] : null,
+  messages: feedback.messages || [],
+  metadata: feedback.metadata || {},
+  createdAt: feedback.createdAt,
+  updatedAt: feedback.updatedAt,
+});
+
+const normalizeHandoffStateByStatus = (status) => {
+  if (status === "closed" || status === "resolved") {
+    return "closed";
+  }
+  if (status === "in_progress") {
+    return "human_active";
+  }
+  return "waiting_human";
+};
+
 const createFeedback = async ({ user, payload, requestMeta, config }) => {
   const validationError = validateCreateFeedbackInput(payload);
   if (validationError) {
@@ -71,6 +98,137 @@ const createFeedback = async ({ user, payload, requestMeta, config }) => {
   };
 };
 
+const createOrOpenAssistantHandoff = async ({ payload = {} }) => {
+  const userId = String(payload.userId || "").trim();
+  const userEmail = String(payload.userEmail || "").trim();
+  const sessionId = String(payload.sessionId || "").trim();
+  const latestUserMessage = String(payload.latestUserMessage || "").trim();
+  const issueSummary = String(payload.issueSummary || "").trim() || "Yeu cau lien he nhan vien ho tro";
+  const detectedIntent = String(payload.detectedIntent || "human_support").trim();
+  const recentMessages = Array.isArray(payload.recentMessages) ? payload.recentMessages : [];
+
+  if (!latestUserMessage) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "latestUserMessage is required",
+      code: "SUPPORT_HANDOFF_MESSAGE_REQUIRED",
+    };
+  }
+
+  if (!userId) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "userId is required for handoff",
+      code: "SUPPORT_HANDOFF_USER_REQUIRED",
+    };
+  }
+
+  const existing = await Feedback.findOne({
+    userId,
+    channel: "assistant_handoff",
+    status: { $in: ["open", "in_progress"] },
+    handoffState: { $in: ["waiting_human", "human_active"] },
+  }).sort({ updatedAt: -1 });
+
+  const trimmedRecent = recentMessages
+    .slice(-8)
+    .map((item) => ({
+      sender: item.role === "assistant" ? "system" : "user",
+      content: String(item.text || item.mainAnswer || "").trim(),
+      createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
+    }))
+    .filter((item) => item.content);
+
+  if (existing) {
+    existing.status = existing.status === "closed" ? "open" : existing.status;
+    existing.handoffState = "waiting_human";
+    if (sessionId) {
+      existing.sessionId = sessionId;
+    }
+    existing.metadata = {
+      ...(existing.metadata || {}),
+      source: "assistant_handoff",
+      issueSummary,
+      detectedIntent,
+    };
+    existing.messages.push({
+      sender: "system",
+      content: "Tro ly Bookie da tiep nhan yeu cau va chuyen cho nhan vien ho tro.",
+      createdAt: new Date(),
+    });
+    existing.messages.push({
+      sender: "user",
+      content: latestUserMessage,
+      createdAt: new Date(),
+    });
+    await existing.save();
+    return {
+      ok: true,
+      statusCode: 200,
+      data: {
+        item: existing,
+        conversation: mapConversation(existing),
+        handoff: {
+          mode: "human",
+          state: existing.handoffState,
+          conversationId: String(existing._id),
+          created: false,
+        },
+      },
+    };
+  }
+
+  const conversation = await Feedback.create({
+    userId,
+    userEmail: userEmail || "unknown@bookie.local",
+    subject: issueSummary,
+    message: latestUserMessage,
+    category: "general",
+    priority: "normal",
+    status: "open",
+    handoffState: "waiting_human",
+    channel: "assistant_handoff",
+    sessionId,
+    metadata: {
+      source: "assistant_handoff",
+      issueSummary,
+      detectedIntent,
+      userAgent: String(payload.userAgent || ""),
+      ipAddress: String(payload.ipAddress || ""),
+    },
+    messages: [
+      {
+        sender: "system",
+        content: "Tro ly Bookie da chuyen cuoc hoi thoai cho nhan vien ho tro.",
+        createdAt: new Date(),
+      },
+      ...trimmedRecent,
+      {
+        sender: "user",
+        content: latestUserMessage,
+        createdAt: new Date(),
+      },
+    ],
+  });
+
+  return {
+    ok: true,
+    statusCode: 201,
+    data: {
+      item: conversation,
+      conversation: mapConversation(conversation),
+      handoff: {
+        mode: "human",
+        state: conversation.handoffState,
+        conversationId: String(conversation._id),
+        created: true,
+      },
+    },
+  };
+};
+
 const listMyFeedback = async ({ userId }) => {
   const items = await Feedback.find({ userId: String(userId) }).sort({ createdAt: -1 });
 
@@ -82,6 +240,22 @@ const listMyFeedback = async ({ userId }) => {
     },
     legacy: {
       data: items.map(mapLegacyFeedback),
+    },
+  };
+};
+
+const listMyConversations = async ({ userId }) => {
+  const items = await Feedback.find({
+    userId: String(userId),
+    channel: "assistant_handoff",
+  }).sort({ updatedAt: -1 });
+
+  return {
+    ok: true,
+    statusCode: 200,
+    data: {
+      items: items.map(mapConversation),
+      total: items.length,
     },
   };
 };
@@ -98,6 +272,66 @@ const listAdminFeedback = async () => {
     },
     legacy: {
       data: items.map(mapLegacyFeedback),
+    },
+  };
+};
+
+const addConversationMessage = async ({ feedbackId, sender, content, actorUserId }) => {
+  const msg = String(content || "").trim();
+  if (!msg) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "message must not be empty",
+      code: "SUPPORT_MESSAGE_REQUIRED",
+    };
+  }
+  const feedback = await Feedback.findById(feedbackId);
+  if (!feedback) {
+    return {
+      ok: false,
+      statusCode: 404,
+      message: "Conversation not found",
+      code: "SUPPORT_CONVERSATION_NOT_FOUND",
+    };
+  }
+  if (feedback.channel !== "assistant_handoff") {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "Conversation is not assistant handoff",
+      code: "SUPPORT_CONVERSATION_INVALID_CHANNEL",
+    };
+  }
+  if (sender === "user" && String(feedback.userId) !== String(actorUserId || "")) {
+    return {
+      ok: false,
+      statusCode: 403,
+      message: "Forbidden",
+      code: "SUPPORT_FORBIDDEN",
+    };
+  }
+
+  feedback.messages.push({
+    sender: sender === "admin" ? "admin" : "user",
+    content: msg,
+    createdAt: new Date(),
+  });
+
+  if (sender === "admin") {
+    feedback.status = "in_progress";
+    feedback.handoffState = "human_active";
+  } else if (feedback.status === "closed" || feedback.status === "resolved") {
+    feedback.status = "open";
+    feedback.handoffState = "waiting_human";
+  }
+  await feedback.save();
+  return {
+    ok: true,
+    statusCode: 200,
+    data: {
+      item: feedback,
+      conversation: mapConversation(feedback),
     },
   };
 };
@@ -124,12 +358,21 @@ const updateFeedbackStatus = async ({ feedbackId, status, adminMessage }) => {
   }
 
   feedback.status = nextStatus;
+  if (feedback.channel === "assistant_handoff") {
+    feedback.handoffState = normalizeHandoffStateByStatus(nextStatus);
+  }
   if (typeof adminMessage === "string" && adminMessage.trim()) {
     feedback.messages.push({
       sender: "admin",
       content: adminMessage.trim(),
       createdAt: new Date(),
     });
+    if (feedback.channel === "assistant_handoff" && feedback.handoffState !== "closed") {
+      feedback.handoffState = "human_active";
+      if (feedback.status === "open") {
+        feedback.status = "in_progress";
+      }
+    }
   }
   await feedback.save();
 
@@ -139,6 +382,7 @@ const updateFeedbackStatus = async ({ feedbackId, status, adminMessage }) => {
     data: {
       item: feedback,
       feedback,
+      conversation: feedback.channel === "assistant_handoff" ? mapConversation(feedback) : null,
     },
     legacy: {
       feedback: mapLegacyFeedback(feedback),
@@ -148,7 +392,10 @@ const updateFeedbackStatus = async ({ feedbackId, status, adminMessage }) => {
 
 module.exports = {
   createFeedback,
+  createOrOpenAssistantHandoff,
   listMyFeedback,
+  listMyConversations,
   listAdminFeedback,
+  addConversationMessage,
   updateFeedbackStatus,
 };

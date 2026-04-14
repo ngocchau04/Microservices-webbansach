@@ -31,10 +31,23 @@ export const submitFeedback = (payload) =>
 export const getMyFeedback = () =>
   withNormalizedResponse(apiClient.get("/api/support/feedback/me"));
 
+export const getMySupportConversations = () =>
+  withNormalizedResponse(apiClient.get("/api/support/feedback/conversations/me"));
+
+export const postMySupportConversationMessage = (conversationId, payload) =>
+  withNormalizedResponse(
+    apiClient.post(`/api/support/feedback/conversations/${conversationId}/messages`, payload)
+  );
+
 export const getAdminFeedback = () =>
   withNormalizedResponse(apiClient.get("/api/support/admin/feedback"));
 
 export const updateAdminFeedbackStatus = (feedbackId, payload) =>
   withNormalizedResponse(
     apiClient.patch(`/api/support/admin/feedback/${feedbackId}/status`, payload)
+  );
+
+export const postAdminSupportConversationMessage = (conversationId, payload) =>
+  withNormalizedResponse(
+    apiClient.post(`/api/support/admin/feedback/conversations/${conversationId}/messages`, payload)
   );

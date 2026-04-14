@@ -1,52 +1,18 @@
-name: CI-CD Docker
+name: CI-CD Microservices
 
 on:
   push:
-    branches: [ "main" ]     # đổi nếu bạn dùng branch khác
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+  workflow_dispatch:
 
 jobs:
-  # =========================
-  # 1) BUILD – cài deps & build FrontEnd
-  # =========================
-  build:
+  validate:
     runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      # Frontend: cài & build (dùng Dockerfile của bạn cũng được,
-      # nhưng ở đây build bằng Node để bắt lỗi sớm)
-      - name: Install Frontend deps
-        working-directory: ./FrontEnd
-        run: npm ci
-
-      - name: Build Frontend
-        working-directory: ./FrontEnd
-        run: npm run build
-
-      # Backend: cài deps (để bước test dùng)
-      - name: Install Backend deps
-        working-directory: ./Backend
-        run: npm ci --legacy-peer-deps
-
-  # =========================
-  # 2) TEST – chạy Jest + MongoDB
-  # =========================
-  test:
-    needs: build          # chỉ test khi build OK
-    runs-on: ubuntu-latest
-
     services:
       mongodb:
-        image: mongo:6
+        image: mongo:7
         ports:
           - 27017:27017
         options: >-
@@ -55,12 +21,11 @@ jobs:
           --health-timeout=5s
           --health-retries=10
           --health-start-period=5s
-
     env:
       NODE_ENV: test
-      # dùng DB test riêng
-      MONGO_URI: mongodb://localhost:27017/ktpm_webbansach_test
-
+      MONGO_URI: mongodb://localhost:27017
+      JWT_SECRET: ci_test_secret
+      SECRET_KEY: ci_test_secret
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -70,31 +35,40 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Backend deps
-        working-directory: ./Backend
-        run: npm ci --legacy-peer-deps
+      - name: Install active stack dependencies
+        run: npm run ci:install:active
 
-      - name: Run Backend tests
-        working-directory: ./Backend
-        run: npm test
+      - name: Run thesis-critical core flows
+        run: npm run ci:test:core
 
-  # =========================
-  # 3) DEPLOY – Docker Compose (CD)
-  # =========================
-  deploy:
-    needs: test           # chỉ deploy khi test PASS
-    runs-on: self-hosted  # runner cài trên máy bạn (Docker Desktop)
+      - name: Run full active service test suite
+        run: npm run ci:test:all
 
+      - name: Build web app
+        run: npm run build:web
+
+      - name: Validate micro compose config
+        run: npm run ci:compose:check
+
+  docker-build:
+    needs: validate
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Show docker compose file
-        run: |
-          ls
-          cat docker-compose.yml
+      - name: Build active stack images
+        run: docker compose -f docker-compose.micro.yml build
 
-      - name: Deploy with Docker Compose
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: docker-build
+    runs-on: self-hosted
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Deploy active stack
         run: |
-          docker compose down
-          docker compose up -d --build
+          docker compose -f docker-compose.micro.yml down --remove-orphans
+          docker compose -f docker-compose.micro.yml up -d --build --remove-orphans

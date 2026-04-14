@@ -1,9 +1,9 @@
 .book-card {
   background-color: #fff;
-  border: 1px solid #ddd;
-  border-radius: 10px;
+  border: 1px solid #ececec;
+  border-radius: 12px;
   text-align: center;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
   transition: transform 0.3s, box-shadow 0.3s;
   height: 340px; /* Fixed height to ensure consistent size */
   width: 195px; /* Fixed width to ensure consistent size */
@@ -22,41 +22,42 @@
 .book-card img {
   width: 100%;
   height: 100%;
-  border-radius: 10px;
+  border-radius: 12px 12px 0 0;
   object-fit: cover;
   margin: 0 auto; /* Centers the image */
 }
 
 .book-title-item {
-    height: 20%;
+    height: 22%;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 18px;
-    font-weight: bold;
-    color: red;
+    font-size: 16px;
+    font-weight: 700;
+    color: #cc0000;
+    padding: 0 8px;
+    line-height: 1.25;
 }
 
 .book-card p {
   margin: 5px 0;
-  font-size: 16px;
+  font-size: 14px;
   color: #666;
 }
 
 .book-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
 
 }
 
-/* Remove underline for links */
-a {
+.book-title-item a {
   text-decoration: none;
-  color: inherit; /* Inherit color from parent */
+  color: inherit;
 }
 
-a:hover {
-  color: #007bff; /* Optional: Change color on hover */
+.book-title-item a:hover {
+  color: #9f0000;
 }
 
 .pagination {
@@ -102,7 +103,8 @@ a:hover {
   font-weight: bold;
   justify-content: center;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  color: #1f2937;
 }
 .book-discount{
     padding: 3px 6px;
@@ -144,7 +146,7 @@ a:hover {
 
 .book-favourite, .book-cart{
   font-size: 20px;
-  color: rgb(61, 162, 216);
+  color: rgb(53, 138, 185);
 }
 
 .cardItem{

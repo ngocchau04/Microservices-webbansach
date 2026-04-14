@@ -6,6 +6,7 @@ const DEFAULT_MEDIA_SERVICE_URL = "http://localhost:4004";
 const DEFAULT_NOTIFICATION_SERVICE_URL = "http://localhost:4005";
 const DEFAULT_REPORTING_SERVICE_URL = "http://localhost:4006";
 const DEFAULT_SUPPORT_SERVICE_URL = "http://localhost:4007";
+const DEFAULT_ASSISTANT_SERVICE_URL = "http://localhost:4008";
 const DEFAULT_TIMEOUT_MS = 15000;
 
 const toPositiveNumber = (value, fallback) => {
@@ -42,6 +43,9 @@ const getEnvConfig = () => ({
   ),
   supportServiceUrl: trimSlash(
     process.env.SUPPORT_SERVICE_URL || DEFAULT_SUPPORT_SERVICE_URL
+  ),
+  assistantServiceUrl: trimSlash(
+    process.env.ASSISTANT_SERVICE_URL || DEFAULT_ASSISTANT_SERVICE_URL
   ),
   timeoutMs: toPositiveNumber(process.env.REQUEST_TIMEOUT_MS, DEFAULT_TIMEOUT_MS),
 });

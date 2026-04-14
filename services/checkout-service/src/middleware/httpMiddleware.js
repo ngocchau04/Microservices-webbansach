@@ -1,12 +1,13 @@
-﻿const { errorResponse } = require("../utils/response");
+const { errorResponse } = require("../utils/response");
 
 const requestLogger = (req, res, next) => {
   const startedAt = Date.now();
 
   res.on("finish", () => {
     const durationMs = Date.now() - startedAt;
+    const requestId = req.headers["x-request-id"] || "-";
     console.log(
-      `[checkout-service] ${req.method} ${req.originalUrl} ${res.statusCode} ${durationMs}ms`
+      `[checkout-service] requestId=${requestId} method=${req.method} route=${req.originalUrl} status=${res.statusCode} durationMs=${durationMs}`
     );
   });
 

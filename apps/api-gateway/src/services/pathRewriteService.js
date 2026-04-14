@@ -62,8 +62,13 @@ const buildRewriteRules = () => [
     pattern: /^\/api\/auth\/favorites\/?$/,
     target: () => ({ service: "identity", path: "/favorites" }),
   },
+  {
+    pattern: /^\/api\/auth\/ready\/?$/,
+    target: () => ({ service: "identity", path: "/ready" }),
+  },
 
   { pattern: /^\/api\/catalog\/health\/?$/, target: () => ({ service: "catalog", path: "/health" }) },
+  { pattern: /^\/api\/catalog\/ready\/?$/, target: () => ({ service: "catalog", path: "/ready" }) },
   {
     pattern: /^\/api\/catalog\/products\/list\/?$/,
     target: () => ({ service: "catalog", path: "/products/list" }),
@@ -119,6 +124,10 @@ const buildRewriteRules = () => [
     target: () => ({ service: "checkout", path: "/health" }),
   },
   {
+    pattern: /^\/api\/checkout\/ready\/?$/,
+    target: () => ({ service: "checkout", path: "/ready" }),
+  },
+  {
     pattern: /^\/api\/checkout\/admin\/orders(\/.*)?$/,
     target: (match) => ({ service: "checkout", path: `/admin/orders${match[1] || ""}` }),
   },
@@ -160,6 +169,10 @@ const buildRewriteRules = () => [
     target: () => ({ service: "reporting", path: "/health" }),
   },
   {
+    pattern: /^\/api\/reporting\/ready\/?$/,
+    target: () => ({ service: "reporting", path: "/ready" }),
+  },
+  {
     pattern: /^\/api\/reporting\/dashboard\/summary\/?$/,
     target: () => ({ service: "reporting", path: "/dashboard/summary" }),
   },
@@ -192,6 +205,26 @@ const buildRewriteRules = () => [
   {
     pattern: /^\/api\/support\/health\/?$/,
     target: () => ({ service: "support", path: "/health" }),
+  },
+  {
+    pattern: /^\/api\/support\/ready\/?$/,
+    target: () => ({ service: "support", path: "/ready" }),
+  },
+
+  {
+    pattern: /^\/api\/assistant\/health\/?$/,
+    target: () => ({ service: "assistant", path: "/health" }),
+  },
+  {
+    pattern: /^\/api\/assistant\/ready\/?$/,
+    target: () => ({ service: "assistant", path: "/ready" }),
+  },
+  {
+    pattern: /^\/api\/assistant(\/.*)?$/,
+    target: (match) => ({
+      service: "assistant",
+      path: match[1] || "/",
+    }),
   },
 ];
 
@@ -235,6 +268,10 @@ const resolveTargetBaseUrl = ({ service, config }) => {
 
   if (service === "support") {
     return config.supportServiceUrl;
+  }
+
+  if (service === "assistant") {
+    return config.assistantServiceUrl;
   }
 
   return null;

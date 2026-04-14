@@ -1,17 +1,18 @@
 .top-selling-product {
     margin: 20px;
-    padding: 10px;
+    padding: 14px 16px;
     background-color: #f9f9f9;
-    border-radius: 8px;
+    border-radius: 12px;
     display: flex ;
     flex-direction: column;
+    border: 1px solid #f0f0f0;
 }
 .title-componet
 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 5px;
+    padding: 6px 4px;
 }
 .viewAll{
     color: rgb(28, 98, 176) !important;
@@ -25,7 +26,8 @@
 .top-selling-product h3 {
     display: flex;
     align-items: center;
-    font-size: 24px;
+    font-size: 22px;
+    letter-spacing: 0.2px;
     color: #ff4500;
 }
 

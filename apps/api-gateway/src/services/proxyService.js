@@ -23,6 +23,7 @@ const setForwardHeaders = (requestHeaders, req, upstreamHost) => {
     .join(", ");
   headers["x-forwarded-host"] = req.headers.host || "";
   headers["x-forwarded-proto"] = req.protocol || "http";
+  headers["x-request-id"] = req.requestId || req.headers["x-request-id"] || "";
 
   return headers;
 };

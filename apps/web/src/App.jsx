@@ -9,6 +9,7 @@ import ListProduct from "./pages/ListProduct";
 import Order from "./pages/Order";
 import VoucherPage from "./pages/VoucherPage";
 import Admin from "./pages/Admin";
+import FeaturedAuthors from "./pages/FeaturedAuthors";
 import { useEffect } from "react";
 import { useUser } from "./context/UserContext";
 import PaymentPage from "./pages/Order/PaymentPage";
@@ -47,19 +48,18 @@ function App() {
   return (
       <BrowserRouter>
         <Routes>
-          <Route path="/*" element={<HomePage />} />
           <Route path="/book/:id" element={<BookDetail />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/verify" element={<VerifyAccount />} />
           <Route path="/list" element={<ListProduct />} />
+          <Route path="/authors" element={<FeaturedAuthors />} />
           <Route path="/order" element={<Order />} />
           <Route path="/forgot-password" element={<VerifyAccount isresetpass={true} />} />
           <Route path="/voucher" element={<VoucherPage />} />
           <Route path="/payment" element={<PaymentPage />} />
-          {
-            user && user.role === "admin" ? <Route path="/admin" element={<Admin />} /> : null
-          }
+          {user && user.role === "admin" ? <Route path="/admin" element={<Admin />} /> : null}
+          <Route path="/*" element={<HomePage />} />
         </Routes>
       </BrowserRouter>
   );

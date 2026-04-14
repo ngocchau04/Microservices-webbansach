@@ -26,6 +26,18 @@ jest.mock("../src/models/Feedback", () => ({
     ),
   })),
   findById: jest.fn(async (id) => savedItems.find((item) => String(item._id) === String(id)) || null),
+  findOne: jest.fn((query = {}) => ({
+    sort: jest.fn(async () =>
+      savedItems.find((item) =>
+        Object.entries(query).every(([key, value]) => {
+          if (value && typeof value === "object" && Array.isArray(value.$in)) {
+            return value.$in.map(String).includes(String(item[key]));
+          }
+          return String(item[key]) === String(value);
+        })
+      ) || null
+    ),
+  })),
 }));
 
 jest.mock("../src/services/notificationClient", () => ({
@@ -78,5 +90,48 @@ describe("feedbackService", () => {
 
     expect(updateResult.ok).toBe(true);
     expect(updateResult.data.feedback.status).toBe("in_progress");
+  });
+
+  test("createOrOpenAssistantHandoff creates conversation and appends message", async () => {
+    const created = await feedbackService.createOrOpenAssistantHandoff({
+      payload: {
+        userId: "u2",
+        userEmail: "u2@example.com",
+        sessionId: "sess_1",
+        latestUserMessage: "toi can nhan vien ho tro",
+        issueSummary: "handoff",
+        detectedIntent: "human_support",
+        recentMessages: [{ role: "user", text: "help me" }],
+      },
+    });
+    expect(created.ok).toBe(true);
+    expect(created.data.handoff.mode).toBe("human");
+    expect(created.data.conversation.channel).toBe("assistant_handoff");
+
+    const reopened = await feedbackService.createOrOpenAssistantHandoff({
+      payload: {
+        userId: "u2",
+        latestUserMessage: "cho minh gap nhan vien",
+      },
+    });
+    expect(reopened.ok).toBe(true);
+    expect(reopened.data.handoff.created).toBe(false);
+  });
+
+  test("addConversationMessage from admin flips state to human_active", async () => {
+    await feedbackService.createOrOpenAssistantHandoff({
+      payload: {
+        userId: "u3",
+        latestUserMessage: "need human",
+      },
+    });
+    const result = await feedbackService.addConversationMessage({
+      feedbackId: "fb_1",
+      sender: "admin",
+      content: "Nhan vien dang ho tro ban",
+      actorUserId: "admin_1",
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data.conversation.handoffState).toBe("human_active");
   });
 });

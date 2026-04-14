@@ -1,105 +1,353 @@
-.adorderbut{
-    display: flex;
-    margin-bottom: 20px;
+/* ========== Admin Order — list view (high-contrast polish; layout unchanged) ========== */
+
+.admin-order {
+  max-width: 100%;
+  padding: 12px 8px 36px;
+  background: radial-gradient(120% 80% at 50% -10%, rgba(196, 0, 0, 0.07) 0%, transparent 55%);
 }
-.adorderbut button{
-    margin-left: 30px;
-    font-size: 20px;
-    padding: 5px;
-    border: 2px solid rgb(255, 255, 255);
-    border-radius: 5px;
-    background-color: #CD0000;
-    cursor: pointer;
-    color: #ffffff;
+
+/* Filter row: elevated “toolbar” card — clearly not flat red blocks */
+.admin-order .adorderbut,
+.admin-order__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 14px;
+  margin: 0 0 22px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 1) inset,
+    0 10px 40px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(196, 0, 0, 0.06);
 }
-.adorderbut button:hover{
-    color: #000000;
-    background-color: #FFD700;
-    border: 2px solid rgb(0, 0, 0);
-    border-radius: 5px;
+
+.admin-order .adorderbut button,
+.admin-order .dhbutton {
+  margin: 0;
+  padding: 11px 18px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1.25;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  color: #4a4a4a;
+  background: linear-gradient(180deg, #f3f3f3 0%, #e8e8e8 100%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.18s ease;
 }
-.adormadh{
-    cursor: pointer;
+
+.admin-order .dhbutton:hover {
+  color: #8b0000;
+  background: #fff;
+  border-color: rgba(196, 0, 0, 0.45);
+  box-shadow: 0 6px 20px rgba(196, 0, 0, 0.15);
+  transform: translateY(-2px);
 }
-.adormadh:hover{
-    text-decoration: underline;
+
+.admin-order .dhbutton:active {
+  transform: translateY(0);
 }
-.adorttdh{
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 20px;
+
+/* Selected = premium tab: crimson pill + white label + gold ring (obvious vs default gray) */
+.admin-order .dhbutton--active {
+  color: #fff !important;
+  background: linear-gradient(145deg, #e01820 0%, #b00008 48%, #7a0508 100%);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow:
+    0 0 0 2px rgba(240, 193, 75, 0.65),
+    0 8px 24px rgba(180, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  font-weight: 800;
+  transform: translateY(-1px);
 }
-.adorttdh button{
-    border: none;
-    font-size: 30px;
-    background-color: #ffffff;
-    cursor: pointer;
-    color: black;
+
+.admin-order .dhbutton--active:hover {
+  color: #fff !important;
+  filter: brightness(1.05);
+  box-shadow:
+    0 0 0 2px rgba(255, 220, 140, 0.9),
+    0 10px 28px rgba(180, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
-.adorttdh button:hover{
-    color: #CD0000;
+
+/* Title block: anchored hierarchy between filters and table */
+.admin-order__header {
+  margin: 0 0 20px;
+  padding: 16px 12px 18px;
+  text-align: center;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.9) 100%);
+  border: 1px solid rgba(196, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
 }
-.adorttnn{
-    margin-left: 20px;
-    margin-bottom: 20px;
-    margin-top: 10px;
+
+.admin-order__title {
+  margin: 0;
+  padding: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #141414;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  line-height: 1.2;
 }
-.adorxtt{
-    font-size: 18px;
+
+.admin-order__title::after {
+  content: "";
+  display: block;
+  width: 72px;
+  height: 4px;
+  margin: 14px auto 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #c40000 0%, #f0c14b 50%, #c40000 100%);
+  box-shadow: 0 2px 8px rgba(196, 0, 0, 0.25);
 }
-.ps p{
-    margin-bottom: 10px;
+
+/* Table: strong card frame + depth */
+.admin-order__table-wrap {
+  overflow-x: auto;
+  border-radius: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  background: #fff;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 1) inset,
+    0 12px 48px rgba(0, 0, 0, 0.1),
+    0 4px 16px rgba(196, 0, 0, 0.07);
 }
-.cnbton{
-    margin-top: 5px;
-    margin-bottom: 15px;
+
+.admin-order__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
 }
-.cnbton button{
-    padding: 3px;
-    font-size: 15px;
-    margin-right: 5px;
-    cursor: pointer;
+
+.admin-order__table thead {
+  background: linear-gradient(180deg, #efefef 0%, #e2e2e2 100%);
 }
-.cardgh{
-    display: flex;
-    width: 500px;
-    height: auto;
-    border: 1.5px solid;
-    border-radius: 5px;
-    margin-left: 50px;
-    margin-top: 10px;
-    margin-bottom: 20px;
-    font-family: Arial, Helvetica, sans-serif;
+
+.admin-order__table th {
+  padding: 16px 14px;
+  text-align: left;
+  font-weight: 800;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #333;
+  border-bottom: 3px solid #c40000;
+  white-space: nowrap;
 }
-.cardgh img{
-    width: 30%;
-    border-radius: 5px 0 0 5px;
-    cursor: pointer;
+
+.admin-order__table td {
+  padding: 15px 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  color: #1e1e1e;
+  vertical-align: middle;
 }
-.cardghh-text{
-    width: 70%;
-    margin-left: 20px;
-    margin-top: 10px;
+
+.admin-order__table tbody tr {
+  transition: background 0.18s ease, box-shadow 0.18s ease;
 }
-.cardgh-text p{
-    margin-left: 10px;
-    margin-top: 10px;
+
+.admin-order__table tbody tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.02);
 }
-.cardghprice{
-    text-align: center;
-    margin-top: 10px;
-    margin-left: 10px;
-    display: flex;
+
+.admin-order__table tbody tr:hover {
+  background: rgba(196, 0, 0, 0.07);
+  box-shadow: inset 3px 0 0 #c40000;
 }
-.cargh-pr{
-    font-size: 20px;
+
+.admin-order__table tbody tr:last-child td {
+  border-bottom: none;
 }
-.cardgh-price{
-    font-size: 30px;
-    margin-top: -7px;
-    margin-left: 10px;
-    color: #A0522D;
+
+.admin-order__table .stt {
+  text-align: center;
+  width: 3.5rem;
+  color: #555;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
+
+.admin-order__cell-pay {
+  max-width: 140px;
+  word-break: break-word;
+}
+
+.adormadh {
+  cursor: pointer;
+  color: #b01018;
+  font-weight: 700;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adormadh:hover {
+  text-decoration: underline;
+  color: #7a0000;
+}
+
+/* Empty state: intentional panel */
+.admin-order__empty {
+  text-align: center;
+  padding: 64px 32px !important;
+  color: #555;
+  font-size: 1rem;
+  font-weight: 500;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(0, 0, 0, 0.02),
+      rgba(0, 0, 0, 0.02) 8px,
+      transparent 8px,
+      transparent 16px
+    ),
+    linear-gradient(180deg, #fbfbfb 0%, #fff 100%);
+  border: none !important;
+  min-height: 220px;
+  vertical-align: middle;
+}
+
+/* ========== Order detail view (existing classes; light consistency) ========== */
+.adorttdh {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.adorttdh h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.adorttdh button {
+  border: none;
+  font-size: 1.5rem;
+  background: #f5f5f5;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  cursor: pointer;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.adorttdh button:hover {
+  color: #c40000;
+  background: #fff0f0;
+}
+
+.adorttnn {
+  margin-left: 20px;
+  margin-bottom: 20px;
+  margin-top: 10px;
+}
+
+.adorxtt {
+  font-size: 18px;
+}
+
+.ps p {
+  margin-bottom: 10px;
+}
+
+.cnbton {
+  margin-top: 5px;
+  margin-bottom: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cnbton button {
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-right: 0;
+  cursor: pointer;
+  border-radius: 10px;
+  border: 1px solid rgba(196, 0, 0, 0.35);
+  background: #fff;
+  color: #9a1414;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.cnbton button:hover {
+  background: #c40000;
+  color: #fff;
+  border-color: #c40000;
+}
+
+.cardgh {
+  display: flex;
+  width: 500px;
+  height: auto;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  margin-left: 50px;
+  margin-top: 10px;
+  margin-bottom: 20px;
+  font-family: "Inter", Arial, Helvetica, sans-serif;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.cardgh img {
+  width: 30%;
+  border-radius: 0;
+  cursor: pointer;
+  object-fit: cover;
+}
+
+.cardghh-text {
+  width: 70%;
+  margin-left: 20px;
+  margin-top: 10px;
+}
+
+.cardgh-text p {
+  margin-left: 10px;
+  margin-top: 10px;
+}
+
+.cardghprice {
+  text-align: center;
+  margin-top: 10px;
+  margin-left: 10px;
+  display: flex;
+}
+
+.cargh-pr {
+  font-size: 20px;
+}
+
+.cardgh-price {
+  font-size: 30px;
+  margin-top: -7px;
+  margin-left: 10px;
+  color: #a0522d;
+}
+
 .adorttdh h2 {
-    text-align: left;
+  text-align: left;
 }

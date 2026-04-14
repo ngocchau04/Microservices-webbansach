@@ -16,7 +16,7 @@ const getEnvConfig = () => ({
   port: toNumber(process.env.PORT, DEFAULT_PORT),
   mongoUri: process.env.MONGO_URI || "mongodb://localhost:27017",
   dbName: process.env.IDENTITY_DB_NAME || DEFAULT_DB_NAME,
-  jwtSecret: process.env.JWT_SECRET || process.env.SECRET_KEY || "your_secret_key",
+  jwtSecret: process.env.JWT_SECRET || process.env.SECRET_KEY || "",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || DEFAULT_JWT_EXPIRES_IN,
   googleClientId: process.env.GOOGLE_CLIENT_ID || process.env.CLIENT_ID || "",
   emailUser: process.env.EMAIL_USER || "",

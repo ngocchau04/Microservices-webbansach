@@ -5,6 +5,7 @@ const cors = require("cors");
 const { getEnvConfig } = require("./config/env");
 const { createHealthRoutes } = require("./routes/healthRoutes");
 const { createDomainRoutes } = require("./routes/domainRoutes");
+const { requestIdMiddleware } = require("./middleware/requestIdMiddleware");
 const { requestLogger } = require("./middleware/requestLogger");
 const { notFoundHandler } = require("./middleware/notFoundHandler");
 const { errorHandler } = require("./middleware/errorHandler");
@@ -21,6 +22,7 @@ app.use((req, res, next) => {
   }
   return jsonParser(req, res, next);
 });
+app.use(requestIdMiddleware);
 app.use(requestLogger);
 
 app.use(createHealthRoutes(config));
@@ -39,6 +41,7 @@ if (require.main === module) {
     console.log(`Notification upstream: ${config.notificationServiceUrl}`);
     console.log(`Reporting upstream: ${config.reportingServiceUrl}`);
     console.log(`Support upstream: ${config.supportServiceUrl}`);
+    console.log(`Assistant upstream: ${config.assistantServiceUrl}`);
   });
 }
 

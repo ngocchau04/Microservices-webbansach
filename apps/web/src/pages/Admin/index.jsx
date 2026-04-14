@@ -31,31 +31,62 @@ function Admin() {
 
   return (
     <div className="Admin-container">
-      <div className="Admin-sidebar">
-        <div>
-          <button onClick={() => setActiveTab("revenue")}>
-            <FaMoneyBillTrendUp style={{ marginBottom: "-2px" }} /> Doanh thu
+      <aside className="Admin-sidebar" aria-label="Menu quản trị">
+        <nav className="Admin-sidebar__nav">
+          <button
+            type="button"
+            className={`Admin-sidebar__item${activeTab === "revenue" ? " Admin-sidebar__item--active" : ""}`}
+            onClick={() => setActiveTab("revenue")}
+          >
+            <FaMoneyBillTrendUp className="Admin-sidebar__icon" aria-hidden />
+            <span className="Admin-sidebar__label">Doanh thu</span>
           </button>
-          <button onClick={() => setActiveTab("order")}>
-            <HiShoppingBag style={{ marginBottom: "-2px" }} /> Don hang
+          <button
+            type="button"
+            className={`Admin-sidebar__item${activeTab === "order" ? " Admin-sidebar__item--active" : ""}`}
+            onClick={() => setActiveTab("order")}
+          >
+            <HiShoppingBag className="Admin-sidebar__icon" aria-hidden />
+            <span className="Admin-sidebar__label">Don hang</span>
           </button>
-          <button onClick={() => setActiveTab("product")}>
-            <AiFillProduct style={{ marginBottom: "-3px" }} /> San pham
+          <button
+            type="button"
+            className={`Admin-sidebar__item${activeTab === "product" ? " Admin-sidebar__item--active" : ""}`}
+            onClick={() => setActiveTab("product")}
+          >
+            <AiFillProduct className="Admin-sidebar__icon" aria-hidden />
+            <span className="Admin-sidebar__label">San pham</span>
           </button>
-          <button onClick={() => setActiveTab("user")}>
-            <FaUserFriends style={{ marginBottom: "-3px" }} /> Khach hang
+          <button
+            type="button"
+            className={`Admin-sidebar__item${activeTab === "user" ? " Admin-sidebar__item--active" : ""}`}
+            onClick={() => setActiveTab("user")}
+          >
+            <FaUserFriends className="Admin-sidebar__icon" aria-hidden />
+            <span className="Admin-sidebar__label">Khach hang</span>
           </button>
-          <button onClick={() => setActiveTab("voucher")}>
-            <IoTicket style={{ marginBottom: "-2px" }} /> Voucher
+          <button
+            type="button"
+            className={`Admin-sidebar__item${activeTab === "voucher" ? " Admin-sidebar__item--active" : ""}`}
+            onClick={() => setActiveTab("voucher")}
+          >
+            <IoTicket className="Admin-sidebar__icon" aria-hidden />
+            <span className="Admin-sidebar__label">Voucher</span>
           </button>
-          <button onClick={() => setActiveTab("support")}>
-            <MdSupportAgent style={{ marginBottom: "-2px" }} /> Feedback
+          <button
+            type="button"
+            className={`Admin-sidebar__item${activeTab === "support" ? " Admin-sidebar__item--active" : ""}`}
+            onClick={() => setActiveTab("support")}
+          >
+            <MdSupportAgent className="Admin-sidebar__icon" aria-hidden />
+            <span className="Admin-sidebar__label">Feedback</span>
           </button>
-        </div>
-        <button onClick={handleLogout}>
-          <MdLogout style={{ fontSize: "30px", marginBottom: "-6px" }} /> Dang xuat
+        </nav>
+        <button type="button" className="Admin-sidebar__item Admin-sidebar__item--logout" onClick={handleLogout}>
+          <MdLogout className="Admin-sidebar__icon Admin-sidebar__icon--logout" aria-hidden />
+          <span className="Admin-sidebar__label">Dang xuat</span>
         </button>
-      </div>
+      </aside>
       <div className="Admin-content">
         {activeTab === "revenue" && <AdminRevenue />}
         {activeTab === "user" && <AdminUser />}

@@ -5,8 +5,9 @@ const requestLogger = (req, res, next) => {
 
   res.on("finish", () => {
     const durationMs = Date.now() - startedAt;
+    const requestId = req.headers["x-request-id"] || "-";
     console.log(
-      `[support-service] ${req.method} ${req.originalUrl} ${res.statusCode} ${durationMs}ms`
+      `[support-service] requestId=${requestId} method=${req.method} route=${req.originalUrl} status=${res.statusCode} durationMs=${durationMs}`
     );
   });
 

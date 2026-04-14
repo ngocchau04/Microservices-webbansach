@@ -1,5 +1,5 @@
 const express = require("express");
-const { healthCheck } = require("../controllers/healthController");
+const { healthCheck, readyCheck } = require("../controllers/healthController");
 const authController = require("../controllers/authController");
 const profileController = require("../controllers/profileController");
 const adminUserController = require("../controllers/adminUserController");
@@ -12,6 +12,7 @@ const createIdentityRoutes = (config) => {
   const requireAuth = authMiddleware(config);
 
   router.get("/health", healthCheck);
+  router.get("/ready", readyCheck);
 
   router.post("/register", asyncHandler(authController.register));
   router.post("/login", asyncHandler(authController.login));

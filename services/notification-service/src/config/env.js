@@ -32,6 +32,7 @@ const toBoolean = (value, fallback) => {
 
 const getEnvConfig = () => ({
   port: toNumber(process.env.PORT, DEFAULT_PORT),
+  jwtSecret: process.env.JWT_SECRET || process.env.SECRET_KEY || "",
   emailFrom: process.env.EMAIL_FROM || process.env.SMTP_USER || "no-reply@bookstore.local",
   smtpHost: process.env.SMTP_HOST || "smtp.gmail.com",
   smtpPort: toNumber(process.env.SMTP_PORT, 587),

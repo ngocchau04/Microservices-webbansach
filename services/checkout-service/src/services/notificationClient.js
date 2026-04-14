@@ -1,12 +1,29 @@
-const postWithTimeout = async ({ url, payload, timeoutMs }) => {
+const jwt = require("jsonwebtoken");
+
+const createInternalToken = (config) =>
+  !config.jwtSecret
+    ? ""
+    :
+  jwt.sign(
+    {
+      internal: true,
+      service: "checkout-service",
+    },
+    config.jwtSecret,
+    { expiresIn: "2m" }
+  );
+
+const postWithTimeout = async ({ url, payload, timeoutMs, config }) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    const internalToken = createInternalToken(config);
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(internalToken ? { Authorization: `Bearer ${internalToken}` } : {}),
       },
       body: JSON.stringify(payload),
       signal: controller.signal,
@@ -30,6 +47,7 @@ const sendOrderEmail = async ({ config, order }) => {
   return postWithTimeout({
     url,
     timeoutMs: config.notificationRequestTimeoutMs,
+    config,
     payload: {
       email: order.shippingInfo.email,
       customerName: order.shippingInfo.name,
@@ -52,6 +70,7 @@ const sendOrderStatusEmail = async ({ config, order, previousStatus }) => {
   return postWithTimeout({
     url,
     timeoutMs: config.notificationRequestTimeoutMs,
+    config,
     payload: {
       email: order.shippingInfo.email,
       customerName: order.shippingInfo.name,

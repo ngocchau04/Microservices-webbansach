@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Footer from "../../components/Footer";
 import Header from "../../components/Header";
 import "./styles.css";
@@ -228,7 +228,11 @@ const Order = () => {
     return (
       <>
         <Header />
-        <h2>Dang tai...</h2>
+        <div className="order-page order-page--state">
+          <div className="order-page__state-card">
+            <p className="order-page__state-text">Dang tai...</p>
+          </div>
+        </div>
         <Footer />
       </>
     );
@@ -238,7 +242,12 @@ const Order = () => {
     return (
       <>
         <Header />
-        <h2>Khong co don hang nao</h2>
+        <div className="order-page order-page--state">
+          <div className="order-page__state-card order-page__state-card--empty">
+            <h2 className="order-page__state-title">Khong co don hang nao</h2>
+            <p className="order-page__state-desc">Hay chon san pham tu gio hang de tiep tuc.</p>
+          </div>
+        </div>
         <Footer />
       </>
     );
@@ -247,108 +256,229 @@ const Order = () => {
   return (
     <>
       <Header />
-      <div className="order-body">
-        <div className="order-layout">
-          <div className="order-details">
-            {lineItems.map((item, index) => (
-              <div key={item.id} className="order-item">
-                <img src={item.image} alt={item.title} className="order-item-image" />
-                <div>
-                  <h3>{formatTitle(item.title)}</h3>
-                  <p>Gia: {formatMoney(item.price)} VND</p>
-                  <p>
-                    <button onClick={() => handleDecreaseQuantity(index)}>-</button>
-                    {item.quantity}
-                    <button onClick={() => handleIncreaseQuantity(index)}>+</button>
-                  </p>
-                  <p>Giam gia: {item.discountPercent}%</p>
-                  <button onClick={() => handleDelete(index)}>Xoa</button>
+      <div className="order-body order-page">
+        <div className="order-page__inner">
+          <div className="order-layout">
+            <section className="order-details" aria-label="San pham trong don">
+              <header className="order-details__head">
+                <span className="order-details__badge">San pham da chon</span>
+                <span className="order-details__count">{lineItems.length} mat hang</span>
+              </header>
+              {lineItems.map((item, index) => (
+                <article key={item.id} className="order-item">
+                  <div className="order-item__media">
+                    <div className="order-item__thumb">
+                      <img src={item.image} alt={item.title || "San pham"} className="order-item-image" />
+                    </div>
+                  </div>
+                  <div className="order-item__body">
+                    <div className="order-item__header-block">
+                      <h3 className="order-item__title">{formatTitle(item.title)}</h3>
+                      <div className="order-item__meta">
+                        <div className="order-item__price-row">
+                          <span className="order-item__price-label">Don gia</span>
+                          <span className="order-item__price">
+                            <strong className="order-item__price-num">
+                              {formatMoney(item.price)}
+                              <span className="order-item__currency"> VND</span>
+                            </strong>
+                          </span>
+                        </div>
+                        <span className="order-item__discount-note">Giam gia: {item.discountPercent}%</span>
+                      </div>
+                    </div>
+                    <div className="order-item__subtotal" aria-label="Thanh tien dong">
+                      <span className="order-item__subtotal-label">Thanh tien</span>
+                      <span className="order-item__subtotal-value">
+                        {formatMoney(item.price * item.quantity)} <span className="order-item__currency">VND</span>
+                      </span>
+                    </div>
+                    <div className="order-item__actions">
+                      <div className="order-item__stepper" role="group" aria-label="So luong">
+                        <button
+                          type="button"
+                          className="order-item__qty-btn"
+                          onClick={() => handleDecreaseQuantity(index)}
+                          aria-label="Giam so luong"
+                        >
+                          −
+                        </button>
+                        <span className="order-item__qty" aria-live="polite">
+                          {item.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          className="order-item__qty-btn"
+                          onClick={() => handleIncreaseQuantity(index)}
+                          aria-label="Tang so luong"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <button type="button" className="order-item__remove" onClick={() => handleDelete(index)}>
+                        <span className="order-item__remove-icon" aria-hidden="true">
+                          ×
+                        </span>
+                        <span className="order-item__remove-label">Xoa</span>
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </section>
+
+            <aside className="user-info user-panel" aria-label="Thong tin giao hang">
+              <h2 className="user-panel__title">Thong tin nguoi dung</h2>
+              <p className="user-panel__lead">Dien thong tin nhan hang chinh xac de giao hang nhanh hon.</p>
+
+              <div className="user-panel__field">
+                <label className="user-panel__label" htmlFor="order-name">
+                  Ten
+                </label>
+                <input
+                  id="order-name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="user-info-input user-panel__input"
+                  required
+                  autoComplete="name"
+                />
+              </div>
+              <div className="user-panel__field">
+                <label className="user-panel__label" htmlFor="order-email">
+                  Email
+                </label>
+                <input
+                  id="order-email"
+                  type="text"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="user-info-input user-panel__input"
+                  required
+                  autoComplete="email"
+                />
+              </div>
+              <div className="user-panel__field">
+                <label className="user-panel__label" htmlFor="order-phone">
+                  So dien thoai
+                </label>
+                <input
+                  id="order-phone"
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="user-info-input user-panel__input"
+                  required
+                  autoComplete="tel"
+                />
+              </div>
+              <div className="user-panel__field">
+                <label className="user-panel__label" htmlFor="order-address">
+                  Dia chi
+                </label>
+                <input
+                  id="order-address"
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="user-info-input user-panel__input"
+                  required
+                  autoComplete="street-address"
+                />
+              </div>
+
+              <div className="user-panel__voucher">
+                <label className="user-panel__label" htmlFor="order-voucher">
+                  Voucher
+                </label>
+                <div className="user-panel__voucher-row">
+                  <input
+                    id="order-voucher"
+                    type="text"
+                    value={voucher}
+                    className="user-info-input user-panel__input user-panel__input--voucher"
+                    onChange={(e) => {
+                      setVoucher(e.target.value);
+                      setVoucherDiscount(0);
+                    }}
+                    placeholder="Nhap ma giam gia"
+                  />
+                  <button type="button" className="user-panel__voucher-btn" onClick={handleVoucher}>
+                    Ap dung
+                  </button>
                 </div>
               </div>
-            ))}
+
+              <div className="payment-method">
+                <h3 className="payment-method__title">Phuong thuc thanh toan</h3>
+                <div className="payment-method__options">
+                  <label className="payment-method__option">
+                    <input
+                      type="radio"
+                      id="cod"
+                      name="payment"
+                      value="cod"
+                      checked={selectedPayment === "cod"}
+                      onChange={(e) => setSelectedPayment(e.target.value)}
+                    />
+                    <span className="payment-method__text">Thanh toan khi nhan hang (COD)</span>
+                  </label>
+                  <label className="payment-method__option">
+                    <input
+                      type="radio"
+                      id="online"
+                      name="payment"
+                      value="online"
+                      checked={selectedPayment === "online"}
+                      onChange={(e) => setSelectedPayment(e.target.value)}
+                    />
+                    <span className="payment-method__text">Thanh toan online (mock)</span>
+                  </label>
+                </div>
+              </div>
+            </aside>
           </div>
-          <div className="user-info">
-            <h2>Thong tin nguoi dung</h2>
-            <p>Ten:</p>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="user-info-input"
-              required
-            />
-            <p>Email:</p>
-            <input
-              type="text"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="user-info-input"
-              required
-            />
-            <p>So dien thoai:</p>
-            <input
-              type="text"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="user-info-input"
-              required
-            />
-            <p>Dia chi:</p>
-            <input
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className="user-info-input"
-              required
-            />
-            <p>Voucher:</p>
-            <input
-              type="text"
-              value={voucher}
-              className="user-info-input"
-              onChange={(e) => {
-                setVoucher(e.target.value);
-                setVoucherDiscount(0);
-              }}
-            />
-            <button onClick={handleVoucher}>Ap dung</button>
-            <div className="payment-method">
-              <h3>Phuong thuc thanh toan</h3>
-              <label>
-                <input
-                  type="radio"
-                  id="cod"
-                  name="payment"
-                  value="cod"
-                  checked={selectedPayment === "cod"}
-                  onChange={(e) => setSelectedPayment(e.target.value)}
-                />
-                Thanh toan khi nhan hang
-              </label>
-              <label style={{ marginLeft: "12px" }}>
-                <input
-                  type="radio"
-                  id="online"
-                  name="payment"
-                  value="online"
-                  checked={selectedPayment === "online"}
-                  onChange={(e) => setSelectedPayment(e.target.value)}
-                />
-                Thanh toan online (mock)
-              </label>
+
+          <section className="order-summary" aria-label="Tom tat don hang">
+            <div className="order-summary__accent" aria-hidden="true" />
+            <div className="order-summary__inner">
+              <div className="order-summary__copy">
+                <div className="order-summary__head">
+                  <h2 className="order-summary__heading">Tom tat don hang</h2>
+                  <p className="order-summary__sub">Kiem tra gia truoc khi xac nhan</p>
+                </div>
+                <div className="order-summary__rows">
+                  <div className="order-summary__row">
+                    <span className="order-summary__label">Tong so san pham</span>
+                    <span className="order-summary__value">{lineItems.length}</span>
+                  </div>
+                  <div className="order-summary__row">
+                    <span className="order-summary__label">Tam tinh</span>
+                    <span className="order-summary__value">{formatMoney(subtotal)} VND</span>
+                  </div>
+                  {voucherDiscount > 0 ? (
+                    <div className="order-summary__row order-summary__row--discount">
+                      <span className="order-summary__label">Giam gia tu voucher</span>
+                      <span className="order-summary__value order-summary__value--discount">
+                        −{formatMoney(voucherDiscount)} VND
+                      </span>
+                    </div>
+                  ) : null}
+                  <div className="order-summary__row order-summary__row--total">
+                    <span className="order-summary__label">Tong gia tri</span>
+                    <span className="order-summary__total">{formatMoney(total)} VND</span>
+                  </div>
+                </div>
+              </div>
+              <div className="order-summary__cta-wrap">
+                <p className="order-summary__cta-note">Xac nhan thong tin va hoan tat don</p>
+                <button type="button" className="order-summary__cta" onClick={handleBuy}>
+                  Dat hang
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-        <div className="order-summary">
-          <div>
-            <h2>Tom tat don hang</h2>
-            <p>Tong so san pham: {lineItems.length}</p>
-            <p>Tong gia tri: {formatMoney(total)} VND</p>
-            {voucherDiscount > 0 ? (
-              <p>Giam gia tu Voucher: {formatMoney(voucherDiscount)} VND</p>
-            ) : null}
-          </div>
-          <button onClick={handleBuy}>Dat hang</button>
+          </section>
         </div>
       </div>
       <Footer />
@@ -357,4 +487,3 @@ const Order = () => {
 };
 
 export default Order;
-

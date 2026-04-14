@@ -3,8 +3,9 @@ const requestLogger = (req, res, next) => {
 
   res.on("finish", () => {
     const durationMs = Date.now() - startedAt;
+    const requestId = req.requestId || req.headers["x-request-id"] || "-";
     console.log(
-      `[Gateway] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${durationMs}ms)`
+      `[Gateway] requestId=${requestId} method=${req.method} route=${req.originalUrl} status=${res.statusCode} durationMs=${durationMs}`
     );
   });
 
