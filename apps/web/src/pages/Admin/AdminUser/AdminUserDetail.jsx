@@ -3,6 +3,7 @@ import './AdminUser.css';
 import { FaArrowLeft } from "react-icons/fa6";
 import { getOrdersByUserId } from "../../../api/checkoutApi";
 import { getProducts } from "../../../api/catalogApi";
+import OrderStatusBadge from "../../../components/OrderStatusBadge/OrderStatusBadge";
 
 function AdminUserDetail(props) {
     const user = props.user;
@@ -143,7 +144,7 @@ function AdminUserDetail(props) {
                                                     {order.products.reduce((sum, product) => sum + product.quantity, 0)}
                                                 </td>
                                                 <td>{order.total.toLocaleString("vi-VN")}₫</td>
-                                                <td>{order.status}</td>
+                                                <td><OrderStatusBadge status={order.orderStatus ?? order.status} /></td>
                                                 <td>{order.type}</td>
                                                 <td>{new Date(order.createdAt).toLocaleDateString("vi-VN")}</td>
                                                 <td>

@@ -1,4 +1,4 @@
-﻿const mongoose = require("mongoose");
+const mongoose = require("mongoose");
 
 const orderItemSchema = new mongoose.Schema(
   {
@@ -35,11 +35,17 @@ const orderSchema = new mongoose.Schema(
         "confirmed",
         "shipping",
         "completed",
+        "return_requested",
+        "return_processing",
+        "return_accepted",
+        "return_rejected",
         "returned",
         "cancelled",
       ],
       default: "pending",
     },
+    returnRequestReason: { type: String, default: "" },
+    returnRequestedAt: { type: Date, default: null },
     voucherInfo: {
       code: { type: String, default: null },
       type: { type: String, enum: ["fixed", "percent", null], default: null },

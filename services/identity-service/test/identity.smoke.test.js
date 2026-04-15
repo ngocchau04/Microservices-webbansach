@@ -19,6 +19,16 @@ const buildDoc = (value) => ({
 const matchesQuery = (item, query = {}) =>
   Object.entries(query).every(([key, val]) => `${item[key]}` === `${val}`);
 
+/** Mirrors identity listUsers filter: role $nin (e.g. exclude admin from customer list). */
+const matchesListUsersQuery = (user, query = {}) => {
+  if (!query || typeof query !== "object") return true;
+  if (query.role && Array.isArray(query.role.$nin)) {
+    const r = user.role ?? "user";
+    return !query.role.$nin.includes(r);
+  }
+  return true;
+};
+
 const mockUserModel = {
   findOne: jest.fn(async (query, projection) => {
     const found = users.find((user) => matchesQuery(user, query));
@@ -74,11 +84,15 @@ const mockUserModel = {
     return buildDoc(users[index]);
   }),
 
-  find: jest.fn(() => ({
-    sort: jest.fn(async () => users.map((user) => buildDoc(user))),
+  find: jest.fn((query = {}) => ({
+    sort: jest.fn(async () =>
+      users.filter((user) => matchesListUsersQuery(user, query)).map((user) => buildDoc(user))
+    ),
   })),
 
-  countDocuments: jest.fn(async () => users.length),
+  countDocuments: jest.fn(async (query = {}) =>
+    users.filter((user) => matchesListUsersQuery(user, query)).length
+  ),
 };
 
 const mockPendingUserModel = {
@@ -212,7 +226,10 @@ describe("identity-service smoke flow", () => {
       .expect(200);
 
     expect(usersRes.body.success).toBe(true);
-    expect(Array.isArray(usersRes.body.accs || usersRes.body.data.users)).toBe(true);
+    const listed = usersRes.body.accs || usersRes.body.data.users;
+    expect(Array.isArray(listed)).toBe(true);
+    expect(listed.some((u) => u.email === "admin@example.com")).toBe(false);
+    expect(listed.some((u) => u.email === "member@example.com")).toBe(true);
 
     await request(app)
       .patch(`/users/${createdUser._id}/status`)

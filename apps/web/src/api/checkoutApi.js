@@ -1,4 +1,4 @@
-﻿import apiClient from "../utils/apiClient";
+import apiClient from "../utils/apiClient";
 
 const unwrap = (response) => {
   const body = response?.data || {};
@@ -39,6 +39,8 @@ export const createOrder = (payload) => getData(apiClient.post("/api/checkout/or
 export const getMyOrders = () => getData(apiClient.get("/api/checkout/orders/me"));
 export const getOrderById = (id) => getData(apiClient.get(`/api/checkout/orders/${id}`));
 export const cancelOrder = (id) => getData(apiClient.patch(`/api/checkout/orders/${id}/cancel`));
+export const requestOrderReturn = (id, payload) =>
+  getData(apiClient.patch(`/api/checkout/orders/${id}/request-return`, payload));
 export const getAdminOrders = () => getData(apiClient.get("/api/checkout/admin/orders"));
 export const updateAdminOrderStatus = (id, payload) =>
   getData(apiClient.patch(`/api/checkout/admin/orders/${id}/status`, payload));

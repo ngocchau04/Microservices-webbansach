@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import React, { useState, useEffect } from "react";
 import { FaSearch, FaShoppingCart } from "react-icons/fa";
 import { MdAccountCircle, MdLogout } from "react-icons/md";
@@ -10,6 +10,7 @@ import logo from "../../assets/logo_yellow.png";
 function Header() {
   const { user, setUser } = useUser();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [ totalCart, setTotalCart ] = useState(1);
 
@@ -64,9 +65,14 @@ function Header() {
     }
   };
 
+  const isAdminRole = String(user?.role || "").toLowerCase() === "admin";
+  const isAdminRoute = location.pathname.startsWith("/admin");
+  const isAdminProfileRoute = isAdminRole && location.pathname.startsWith("/profile");
+  const brandTarget = isAdminRoute || isAdminProfileRoute ? "/admin" : "/";
+
   return (
     <div className={isfixed ? "navbar fixed" : "navbar"}>
-      <Link to="/">
+      <Link to={brandTarget}>
         <div className="logo_container">
           <img src={logo} className="logo" />
         </div>

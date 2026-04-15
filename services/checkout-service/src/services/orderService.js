@@ -8,8 +8,12 @@ const { roundMoney } = require("../utils/money");
 const ADMIN_TRANSITIONS = {
   pending: ["confirmed", "cancelled"],
   confirmed: ["shipping", "cancelled"],
-  shipping: ["completed", "returned"],
+  shipping: ["completed"],
   completed: [],
+  return_requested: ["return_processing", "return_accepted", "return_rejected"],
+  return_processing: ["returned", "return_rejected"],
+  return_accepted: ["returned"],
+  return_rejected: [],
   returned: [],
   cancelled: [],
 };
@@ -35,6 +39,8 @@ const mapOrderLegacy = (order) => ({
   discount: order.totals?.discount || 0,
   subtotal: order.totals?.subtotal || 0,
   createdAt: order.createdAt,
+  returnRequestReason: order.returnRequestReason || "",
+  returnRequestedAt: order.returnRequestedAt || null,
 });
 
 const emitOrderConfirmationEmail = async ({ order, config }) => {
@@ -143,6 +149,8 @@ const normalizeInputItems = async ({ payload, userId, config }) => {
   };
 };
 
+const VOUCHER_ORDER_REJECT_MESSAGE = "Voucher đã hết hoặc không tồn tại !";
+
 const resolveTotals = async ({ items, payload, cart }) => {
   const subtotal = roundMoney(
     items.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0)
@@ -155,12 +163,17 @@ const resolveTotals = async ({ items, payload, cart }) => {
     discountAmount: 0,
   };
 
-  const voucherCode =
+  const rawVoucherCode =
     payload.voucherCode ||
     payload.voucher?.code ||
     payload.appliedVoucherCode ||
     cart?.appliedVoucher?.code ||
     null;
+
+  const voucherCode =
+    rawVoucherCode != null && String(rawVoucherCode).trim()
+      ? String(rawVoucherCode).trim()
+      : null;
 
   if (voucherCode) {
     const voucherResult = await voucherService.resolveApplicableVoucher({
@@ -168,24 +181,36 @@ const resolveTotals = async ({ items, payload, cart }) => {
       subtotal,
     });
 
-    if (voucherResult.ok) {
-      voucherInfo = {
-        code: voucherResult.data.voucher.code,
-        type: voucherResult.data.voucher.type,
-        value: voucherResult.data.voucher.value,
-        discountAmount: voucherResult.data.discount,
+    if (!voucherResult.ok) {
+      return {
+        ok: false,
+        statusCode: voucherResult.statusCode >= 400 && voucherResult.statusCode < 500
+          ? voucherResult.statusCode
+          : 400,
+        message: VOUCHER_ORDER_REJECT_MESSAGE,
+        code: voucherResult.code || "CHECKOUT_VOUCHER_INVALID",
       };
     }
+
+    voucherInfo = {
+      code: voucherResult.data.voucher.code,
+      type: voucherResult.data.voucher.type,
+      value: voucherResult.data.voucher.value,
+      discountAmount: voucherResult.data.discount,
+    };
   }
 
   const discount = roundMoney(voucherInfo.discountAmount || 0);
   const total = roundMoney(Math.max(subtotal - discount, 0));
 
   return {
-    subtotal,
-    discount,
-    total,
-    voucherInfo,
+    ok: true,
+    data: {
+      subtotal,
+      discount,
+      total,
+      voucherInfo,
+    },
   };
 };
 
@@ -223,11 +248,17 @@ const createOrder = async ({ user, payload, config }) => {
   }
 
   const cart = await Cart.findOne({ userId });
-  const totals = await resolveTotals({
+  const totalsResult = await resolveTotals({
     items: itemResult.data.items,
     payload,
     cart,
   });
+
+  if (!totalsResult.ok) {
+    return totalsResult;
+  }
+
+  const totals = totalsResult.data;
 
   const paymentMethod = payload.paymentMethod || payload.type || "cod";
   const paymentStatus = paymentMethod === "online" ? "pending" : "unpaid";
@@ -412,6 +443,68 @@ const listAdminOrders = async () => {
   };
 };
 
+const requestOrderReturn = async ({ requester, orderId, reason, config }) => {
+  const order = await Order.findById(orderId);
+
+  if (!order) {
+    return {
+      ok: false,
+      statusCode: 404,
+      message: "Order not found",
+      code: "CHECKOUT_ORDER_NOT_FOUND",
+    };
+  }
+
+  if (String(order.userId) !== String(requester.userId)) {
+    return {
+      ok: false,
+      statusCode: 403,
+      message: "Permission denied",
+      code: "CHECKOUT_FORBIDDEN",
+    };
+  }
+
+  if (order.orderStatus !== "completed") {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "Chỉ có thể yêu cầu hoàn trả khi đơn đã hoàn tất.",
+      code: "CHECKOUT_RETURN_NOT_ALLOWED",
+    };
+  }
+
+  const trimmed = String(reason || "").trim();
+  if (!trimmed) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "Vui lòng nhập lý do hoàn trả.",
+      code: "CHECKOUT_RETURN_REASON_REQUIRED",
+    };
+  }
+
+  const previousStatus = order.orderStatus;
+  order.orderStatus = "return_requested";
+  order.returnRequestReason = trimmed.slice(0, 2000);
+  order.returnRequestedAt = new Date();
+
+  await order.save();
+  await emitOrderStatusEmail({ order, previousStatus, config });
+
+  return {
+    ok: true,
+    statusCode: 200,
+    data: {
+      item: order,
+      order,
+    },
+    legacy: {
+      status: "success",
+      data: mapOrderLegacy(order),
+    },
+  };
+};
+
 const updateAdminOrderStatus = async ({ orderId, nextStatus, config }) => {
   const order = await Order.findById(orderId);
 
@@ -468,9 +561,11 @@ module.exports = {
   listOrdersByUserId,
   getOrderById,
   cancelOrder,
+  requestOrderReturn,
   listAdminOrders,
   updateAdminOrderStatus,
   mapOrderLegacy,
+  resolveTotals,
 };
 
 

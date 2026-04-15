@@ -5,6 +5,12 @@ import { IoMdArrowDropleft } from "react-icons/io";
 import AdminUserDetail from "./AdminUserDetail"; 
 import { getUsers } from "../../../api/authApi";
 
+/** Defensive filter: customer list must not show admin/staff accounts (API should already exclude them). */
+function isCustomerRow(user) {
+  const role = String(user?.role ?? "user").toLowerCase();
+  return role !== "admin";
+}
+
 function AdminUser()
 {
     const [accs, setAccs] = useState([]);
@@ -26,7 +32,7 @@ function AdminUser()
     useEffect(() => {
         fetchAccounts();
     }, []);
-    const accos = accs.filter(a => a.email!=="admin@gmail.com");
+    const accos = accs.filter(isCustomerRow);
     const indexOfLastCustomer = currentPage * customersPerPage;
     const indexOfFirstCustomer = indexOfLastCustomer - customersPerPage;
     const currentCustomers = accos.slice(indexOfFirstCustomer, indexOfLastCustomer);

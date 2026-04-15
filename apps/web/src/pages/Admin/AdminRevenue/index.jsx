@@ -7,6 +7,7 @@ import {
   getTopProducts,
   getOrderStatusStats,
 } from '../../../api/reportingApi';
+import { getOrderStatusLabel } from '../../../utils/orderStatusLabel';
 import './AdminRevenue.css';
 
 const chartBaseOptions = {
@@ -235,7 +236,7 @@ function AdminRevenue() {
                 className={`admin-revenue__status-row admin-revenue__status-row--tone-${idx % 5}`}
               >
                 <div className="admin-revenue__status-row-top">
-                  <span className="admin-revenue__status-name">{item.status}</span>
+                  <span className="admin-revenue__status-name">{getOrderStatusLabel(item.status)}</span>
                   <span className="admin-revenue__status-pill">
                     {item.count} <span className="admin-revenue__status-unit">don</span>
                   </span>

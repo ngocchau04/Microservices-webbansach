@@ -29,6 +29,11 @@ const createCheckoutRoutes = (config) => {
   router.get("/orders/me", requireAuth, asyncHandler(orderController.getMyOrders));
   router.get("/orders/:id", requireAuth, asyncHandler(orderController.getOrderById));
   router.patch("/orders/:id/cancel", requireAuth, asyncHandler(orderController.cancelOrder));
+  router.patch(
+    "/orders/:id/request-return",
+    requireAuth,
+    asyncHandler(orderController.requestOrderReturn)
+  );
 
   router.get("/admin/orders", requireAuth, adminRequired, asyncHandler(orderController.listAdminOrders));
   router.patch(

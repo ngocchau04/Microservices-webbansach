@@ -680,8 +680,11 @@ const removeFavorite = async ({ userId, productId }) => {
   };
 };
 
+/** Roles that should not appear in customer-facing admin lists (e.g. Khách hàng). */
+const NON_CUSTOMER_ROLES = ["admin"];
+
 const listUsers = async () => {
-  const users = await User.find().sort({ createdAt: -1 });
+  const users = await User.find({ role: { $nin: NON_CUSTOMER_ROLES } }).sort({ createdAt: -1 });
   return {
     ok: true,
     statusCode: 200,
@@ -691,7 +694,7 @@ const listUsers = async () => {
 };
 
 const countUsers = async () => {
-  const total = await User.countDocuments({});
+  const total = await User.countDocuments({ role: { $nin: NON_CUSTOMER_ROLES } });
 
   return {
     ok: true,

@@ -1,4 +1,4 @@
-﻿const orderService = require("../services/orderService");
+const orderService = require("../services/orderService");
 const { sendServiceResult } = require("../utils/http");
 
 const createOrder = async (req, res) => {
@@ -29,6 +29,17 @@ const cancelOrder = async (req, res) => {
   const result = await orderService.cancelOrder({
     requester: req.user,
     orderId: req.params.id,
+    config: req.app.locals.config,
+  });
+
+  return sendServiceResult(res, result);
+};
+
+const requestOrderReturn = async (req, res) => {
+  const result = await orderService.requestOrderReturn({
+    requester: req.user,
+    orderId: req.params.id,
+    reason: req.body.reason || req.body.returnReason,
     config: req.app.locals.config,
   });
 
@@ -82,6 +93,7 @@ module.exports = {
   getMyOrders,
   getOrderById,
   cancelOrder,
+  requestOrderReturn,
   listAdminOrders,
   updateAdminOrderStatus,
   listOrdersLegacy,
