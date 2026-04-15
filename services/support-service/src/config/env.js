@@ -2,6 +2,7 @@ const DEFAULT_PORT = 4007;
 const DEFAULT_DB_NAME = "book_support";
 const DEFAULT_NOTIFICATION_SERVICE_URL = "http://localhost:4005";
 const DEFAULT_TIMEOUT_MS = 8000;
+const DEFAULT_TENANT_ID = "public";
 
 const toNumber = (value, fallback) => {
   const parsed = Number(value);
@@ -38,6 +39,10 @@ const getEnvConfig = () => ({
   ),
   notificationRequired: toBoolean(process.env.NOTIFICATION_REQUIRED, false),
   internalApiKey: process.env.SUPPORT_INTERNAL_API_KEY || "",
+  defaultTenantId: String(process.env.DEFAULT_TENANT_ID || DEFAULT_TENANT_ID)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "") || DEFAULT_TENANT_ID,
 });
 
 module.exports = {

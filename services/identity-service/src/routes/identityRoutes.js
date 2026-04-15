@@ -52,6 +52,18 @@ const createIdentityRoutes = (config) => {
     adminMiddleware,
     asyncHandler(adminUserController.updateUserStatus)
   );
+  router.patch(
+    "/users/:id",
+    requireAuth,
+    adminMiddleware,
+    asyncHandler(adminUserController.updateUser)
+  );
+  router.delete(
+    "/users/:id",
+    requireAuth,
+    adminMiddleware,
+    asyncHandler(adminUserController.deleteUser)
+  );
 
   return router;
 };

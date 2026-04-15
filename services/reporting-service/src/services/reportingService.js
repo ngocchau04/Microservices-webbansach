@@ -192,7 +192,8 @@ const getDashboardSummary = async ({ config }) => {
     };
   }
 
-  const [orders, totalUsers] = await Promise.all([
+  // Identity GET /users/count: registered customer accounts (role !== admin).
+  const [orders, customerAccountCount] = await Promise.all([
     resolveOrders({ config }),
     fetchUsersCount({ config }).catch(() => 0),
   ]);
@@ -216,7 +217,8 @@ const getDashboardSummary = async ({ config }) => {
     totalOrders,
     totalRevenue,
     avgOrderValue,
-    totalUsers,
+    customerAccountCount,
+    totalUsers: customerAccountCount,
     topProducts,
     orderStatus: orderStatusStats,
   };

@@ -22,6 +22,8 @@ const {
   RELATION_KINDS,
 } = require("./graphService");
 const { CorpusDocument } = require("../models/CorpusDocument");
+const { normalizeTenantId } = require("./tenantContextService");
+const { buildAdminCopilotChatResult, isAdminCopilotContext } = require("./adminCopilotService");
 
 const FALLBACK_MESSAGE =
   "Mình chưa đủ tự tin để trả lời chắc chắn từ dữ liệu Bookie hiện tại. Bạn có thể nói rõ hơn theo tác giả, thể loại, mức giá, hoặc mục tiêu học để mình gợi ý đúng hơn.";
@@ -211,7 +213,8 @@ const badgesFromSignals = (refId, signalsByRefId) => {
   return b;
 };
 
-const chat = async ({ message, context = {}, config = {} }) => {
+const chat = async ({ message, context = {}, actor = null, tenantId = "public", config = {} }) => {
+  const scopedTenantId = normalizeTenantId(tenantId, config.defaultTenantId || "public");
   const trimmed = (message || "").trim();
   if (!trimmed) {
     return {
@@ -231,6 +234,20 @@ const chat = async ({ message, context = {}, config = {} }) => {
     };
   }
 
+  /** Admin support copilot — isolated from customer book/chat retrieval & handoff heuristics */
+  if (isAdminCopilotContext(context)) {
+    const payload = buildAdminCopilotChatResult({
+      message: trimmed,
+      context,
+      tenantId: scopedTenantId,
+    });
+    return {
+      ok: true,
+      statusCode: 200,
+      data: payload,
+    };
+  }
+
   const queryAnalysis = analyzeQuery(trimmed, { context });
   const intentInfo = detectIntentDetailed(trimmed, { analysis: queryAnalysis, context });
   const intent = intentInfo.intent || detectIntent(trimmed, { analysis: queryAnalysis, context });
@@ -239,10 +256,11 @@ const chat = async ({ message, context = {}, config = {} }) => {
   const { queryTokens, docs, retrievalMeta } = await retrieve(trimmed, {
     analysis: queryAnalysis,
     context,
+    tenantId: scopedTenantId,
   });
 
   if (wantsHumanSupport) {
-    if (!String(context.userId || "").trim()) {
+    if (!String(actor?.userId || "").trim()) {
       const payload = {
         mainAnswer:
           "Mình đã hiểu bạn muốn gặp nhân viên hỗ trợ. Để chuyển cuộc trò chuyện cho nhân viên, bạn vui lòng đăng nhập trước nhé.",
@@ -271,10 +289,15 @@ const chat = async ({ message, context = {}, config = {} }) => {
     }
     const handoffResult = await createOrOpenSupportHandoff({
       config,
-      context,
+      context: {
+        ...context,
+        userId: String(actor?.userId || "").trim(),
+        userEmail: String(actor?.email || context.userEmail || "").trim(),
+      },
       message: trimmed,
       analysis: queryAnalysis,
       intentInfo,
+      tenantId: scopedTenantId,
     });
     if (handoffResult.ok) {
       const conversation = handoffResult.data?.conversation || null;
@@ -320,13 +343,16 @@ const chat = async ({ message, context = {}, config = {} }) => {
 
   let focusDoc = null;
   if (context.lastProductId) {
-    focusDoc = await findCatalogByProductId(context.lastProductId);
+    focusDoc = await findCatalogByProductId(context.lastProductId, scopedTenantId);
   }
   if (!focusDoc && catalogDocs[0]) {
     focusDoc = catalogDocs[0];
   }
   if (!focusDoc && context.focusAuthorKey && intent === "same_author") {
-    const list = await findSameAuthor(context.focusAuthorKey, { limit: 1 });
+    const list = await findSameAuthor(context.focusAuthorKey, {
+      tenantId: scopedTenantId,
+      limit: 1,
+    });
     focusDoc = list[0] || null;
   }
 
@@ -338,11 +364,15 @@ const chat = async ({ message, context = {}, config = {} }) => {
 
   /** Policy / FAQ qua cạnh đồ thị khi có ngữ cảnh sách */
   if (policyHint && focusDoc) {
-    let graph = await traverseBookToFaqTopic(focusDoc, policyHint.faqRefId);
+    let graph = await traverseBookToFaqTopic(focusDoc, policyHint.faqRefId, scopedTenantId);
     let faqDoc = graph.doc;
     let usedGraphEdge = !!faqDoc;
     if (!faqDoc) {
-      faqDoc = await CorpusDocument.findOne({ sourceType: "faq", refId: policyHint.faqRefId }).lean();
+      faqDoc = await CorpusDocument.findOne({
+        tenantId: scopedTenantId,
+        sourceType: "faq",
+        refId: policyHint.faqRefId,
+      }).lean();
     }
     if (faqDoc) {
       const metaTitle = focusDoc.metadata?.title || focusDoc.title;
@@ -436,11 +466,16 @@ const chat = async ({ message, context = {}, config = {} }) => {
     let tr;
     if (focusDoc) {
       tr = await traverseSameAuthorFromBook(focusDoc, {
+        tenantId: scopedTenantId,
         excludeRefId: focusDoc.refId,
         limit: 10,
       });
     } else {
-      const docs = await findSameAuthor(ak, { excludeRefId: null, limit: 10 });
+      const docs = await findSameAuthor(ak, {
+        tenantId: scopedTenantId,
+        excludeRefId: null,
+        limit: 10,
+      });
       tr = {
         docs,
         steps: [
@@ -523,11 +558,16 @@ const chat = async ({ message, context = {}, config = {} }) => {
     let tr;
     if (focusDoc) {
       tr = await traverseSameCategoryFromBook(focusDoc, {
+        tenantId: scopedTenantId,
         excludeRefId: focusDoc.refId,
         limit: 10,
       });
     } else {
-      const docs = await findSameCategory(ck, { excludeRefId: null, limit: 10 });
+      const docs = await findSameCategory(ck, {
+        tenantId: scopedTenantId,
+        excludeRefId: null,
+        limit: 10,
+      });
       tr = {
         docs,
         steps: [
@@ -608,6 +648,7 @@ const chat = async ({ message, context = {}, config = {} }) => {
       };
     }
     const cheapRaw = await findCheaperInCategory(ck, refPrice, {
+      tenantId: scopedTenantId,
       excludeRefId: anchor?.refId,
       limit: 12,
     });
@@ -676,9 +717,21 @@ const chat = async ({ message, context = {}, config = {} }) => {
         data: { ...payload, message: composeMessage(payload) },
       };
     }
-    const ta = await traverseSameAuthorFromBook(fd, { excludeRefId: fd.refId, limit: 5 });
-    const tc = await traverseSameCategoryFromBook(fd, { excludeRefId: fd.refId, limit: 6 });
-    const inf = await inferRecommendedNext(fd, { excludeRefId: fd.refId, limit: 4 });
+    const ta = await traverseSameAuthorFromBook(fd, {
+      tenantId: scopedTenantId,
+      excludeRefId: fd.refId,
+      limit: 5,
+    });
+    const tc = await traverseSameCategoryFromBook(fd, {
+      tenantId: scopedTenantId,
+      excludeRefId: fd.refId,
+      limit: 6,
+    });
+    const inf = await inferRecommendedNext(fd, {
+      tenantId: scopedTenantId,
+      excludeRefId: fd.refId,
+      limit: 4,
+    });
     const merged = mergeByRefId([ta.docs, tc.docs, inf.docs]);
     const signals = tagSignalsForMerged([], ta.docs, tc.docs, [], fd.refId);
     for (const d of inf.docs) {
@@ -735,8 +788,16 @@ const chat = async ({ message, context = {}, config = {} }) => {
   /** ---------- Catalog keyword hits + graph expansion ---------- */
   if (catalogDocs.length) {
     const focus = catalogDocs[0];
-    const ta = await traverseSameAuthorFromBook(focus, { excludeRefId: focus.refId, limit: 8 });
-    const tc = await traverseSameCategoryFromBook(focus, { excludeRefId: focus.refId, limit: 8 });
+    const ta = await traverseSameAuthorFromBook(focus, {
+      tenantId: scopedTenantId,
+      excludeRefId: focus.refId,
+      limit: 8,
+    });
+    const tc = await traverseSameCategoryFromBook(focus, {
+      tenantId: scopedTenantId,
+      excludeRefId: focus.refId,
+      limit: 8,
+    });
     const merged = mergeByRefId([catalogDocs, ta.docs, tc.docs]);
     const signals = tagSignalsForMerged(catalogDocs, ta.docs, tc.docs, [], focus.refId);
     const ranked = rankCatalogHybrid(merged, {
@@ -828,7 +889,7 @@ const chat = async ({ message, context = {}, config = {} }) => {
 
   /** ---------- recommend / bán chạy ---------- */
   if (intent === "recommend" || wantsRecommendationHeuristic(trimmed)) {
-    const recDocs = await pickRecommendations(queryTokens, queryAnalysis.concepts);
+    const recDocs = await pickRecommendations(queryTokens, queryAnalysis.concepts, scopedTenantId);
     const recs = recDocs.map((d) =>
       mapRecommendation(d, BADGE.popular, {
         reasonLine: "Ưu tiên theo soldCount sau khi cộng điểm khớp từ khóa (nếu có).",
@@ -859,7 +920,7 @@ const chat = async ({ message, context = {}, config = {} }) => {
   }
 
   /** ---------- Weak: fallback + popular ---------- */
-  const recDocs = await pickRecommendations(queryTokens, queryAnalysis.concepts);
+  const recDocs = await pickRecommendations(queryTokens, queryAnalysis.concepts, scopedTenantId);
   const recs = recDocs.map((d) =>
     mapRecommendation(d, "Gợi ý tham khảo", {
       reasonLine: "Gợi ý tham khảo khi truy vấn mơ hồ.",

@@ -44,7 +44,7 @@ const createCatalogRoutes = (config) => {
   );
   router.post(
     "/products/:id/reviews",
-    optionalAuth,
+    requireAuth,
     asyncHandler(reviewController.createReview)
   );
   router.put("/reviews/:id", requireAuth, asyncHandler(reviewController.updateReview));
@@ -70,7 +70,7 @@ const createCatalogRoutes = (config) => {
   router.get("/feedback/:bookId", asyncHandler(reviewController.listFeedbackLegacy));
   router.post(
     "/feedback/:bookId",
-    optionalAuth,
+    requireAuth,
     asyncHandler(reviewController.createFeedbackLegacy)
   );
   router.delete(

@@ -35,6 +35,37 @@ const cancelOrder = async (req, res) => {
   return sendServiceResult(res, result);
 };
 
+const confirmOrderReceived = async (req, res) => {
+  const result = await orderService.confirmOrderReceived({
+    requester: req.user,
+    orderId: req.params.id,
+    config: req.app.locals.config,
+  });
+
+  return sendServiceResult(res, result);
+};
+
+const checkReviewEligibility = async (req, res) => {
+  const result = await orderService.checkReviewEligibility({
+    requester: req.user,
+    productId: req.body.productId || req.query.productId,
+    orderId: req.body.orderId || req.query.orderId,
+  });
+
+  return sendServiceResult(res, result);
+};
+
+const completeOrderAfterReview = async (req, res) => {
+  const result = await orderService.completeOrderAfterReview({
+    requester: req.user,
+    orderId: req.params.id,
+    productId: req.body.productId,
+    config: req.app.locals.config,
+  });
+
+  return sendServiceResult(res, result);
+};
+
 const requestOrderReturn = async (req, res) => {
   const result = await orderService.requestOrderReturn({
     requester: req.user,
@@ -93,6 +124,9 @@ module.exports = {
   getMyOrders,
   getOrderById,
   cancelOrder,
+  confirmOrderReceived,
+  checkReviewEligibility,
+  completeOrderAfterReview,
   requestOrderReturn,
   listAdminOrders,
   updateAdminOrderStatus,

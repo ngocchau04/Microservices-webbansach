@@ -125,7 +125,9 @@ function AdminRevenue() {
 
         setRevenueSeries(Array.isArray(revenueData.legacySeries) ? revenueData.legacySeries : []);
         setTotalIncome(Number(summaryData.totalRevenue) || 0);
-        setTotalUsers(Number(summaryData.totalUsers) || 0);
+        setTotalUsers(
+          Number(summaryData.customerAccountCount ?? summaryData.totalUsers) || 0
+        );
         setProductsSold(Array.isArray(topSoldRes?.data?.items) ? topSoldRes.data.items : []);
         setProductsRevenue(Array.isArray(topRevenueRes?.data?.items) ? topRevenueRes.data.items : []);
         setOrderStatus(Array.isArray(orderStatusRes?.data?.items) ? orderStatusRes.data.items : []);
@@ -176,8 +178,8 @@ function AdminRevenue() {
             <span className="admin-revenue__metric-value">{averageIncome.toLocaleString('vi-VN')} <small>VND</small></span>
           </div>
           <div className="admin-revenue__metric admin-revenue__metric--users">
-            <span className="admin-revenue__metric-label">So luong khach hang</span>
-            <span className="admin-revenue__metric-value accent">{Math.max(totalUsers - 1, 0)}</span>
+            <span className="admin-revenue__metric-label">Tai khoan khach hang</span>
+            <span className="admin-revenue__metric-value accent">{totalUsers}</span>
           </div>
         </div>
       </section>

@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema(
   {
+    tenantId: { type: String, default: "public", index: true },
     imgSrc: { type: String, required: true },
     title: { type: String, required: true, index: true },
     author: { type: String, required: true, index: true },
@@ -12,6 +13,7 @@ const productSchema = new mongoose.Schema(
     rating: { type: Number, min: 0, max: 5, default: 0 },
     reviewsCount: { type: Number, default: 0, min: 0 },
     soldCount: { type: Number, default: 0, min: 0 },
+    stock: { type: Number, default: 0, min: 0 },
     features: [{ type: String }],
     similarBooks: [
       {

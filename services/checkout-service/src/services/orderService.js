@@ -5,10 +5,23 @@ const { fetchProductSnapshot } = require("./catalogClient");
 const { sendOrderEmail, sendOrderStatusEmail } = require("./notificationClient");
 const { roundMoney } = require("../utils/money");
 
+const REVIEW_WINDOW_DAYS = 14;
+const RETURN_WINDOW_DAYS = 7;
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+const RETURN_FLOW_SET = new Set([
+  "return_requested",
+  "return_processing",
+  "return_accepted",
+  "return_rejected",
+  "returned",
+]);
+
 const ADMIN_TRANSITIONS = {
   pending: ["confirmed", "cancelled"],
   confirmed: ["shipping", "cancelled"],
-  shipping: ["completed"],
+  shipping: ["delivered"],
+  delivered: [],
+  received: [],
   completed: [],
   return_requested: ["return_processing", "return_accepted", "return_rejected"],
   return_processing: ["returned", "return_rejected"],
@@ -38,10 +51,52 @@ const mapOrderLegacy = (order) => ({
   total: order.totals?.total || 0,
   discount: order.totals?.discount || 0,
   subtotal: order.totals?.subtotal || 0,
+  deliveredAt: order.deliveredAt || null,
+  receivedAt: order.receivedAt || null,
+  reviewedAt: order.reviewedAt || null,
+  completedAt: order.completedAt || null,
   createdAt: order.createdAt,
   returnRequestReason: order.returnRequestReason || "",
   returnRequestedAt: order.returnRequestedAt || null,
 });
+
+const hasProductInOrder = (order, productId) =>
+  Array.isArray(order?.items) &&
+  order.items.some((item) => String(item?.productId) === String(productId));
+
+const resolveReceiptAt = (order) => {
+  if (order?.receivedAt) {
+    return new Date(order.receivedAt);
+  }
+  if (order?.updatedAt) {
+    return new Date(order.updatedAt);
+  }
+  return null;
+};
+
+const buildPostDeliveryWindow = ({ order, now = new Date() }) => {
+  const receiptAt = resolveReceiptAt(order);
+  if (!receiptAt || Number.isNaN(receiptAt.getTime())) {
+    return {
+      receiptAt: null,
+      reviewDeadlineAt: null,
+      returnDeadlineAt: null,
+      reviewWindowOpen: false,
+      returnWindowOpen: false,
+    };
+  }
+
+  const reviewDeadlineAt = new Date(receiptAt.getTime() + REVIEW_WINDOW_DAYS * DAY_IN_MS);
+  const returnDeadlineAt = new Date(receiptAt.getTime() + RETURN_WINDOW_DAYS * DAY_IN_MS);
+
+  return {
+    receiptAt,
+    reviewDeadlineAt,
+    returnDeadlineAt,
+    reviewWindowOpen: now.getTime() <= reviewDeadlineAt.getTime(),
+    returnWindowOpen: now.getTime() <= returnDeadlineAt.getTime(),
+  };
+};
 
 const emitOrderConfirmationEmail = async ({ order, config }) => {
   try {
@@ -443,6 +498,261 @@ const listAdminOrders = async () => {
   };
 };
 
+const confirmOrderReceived = async ({ requester, orderId, config }) => {
+  const order = await Order.findById(orderId);
+
+  if (!order) {
+    return {
+      ok: false,
+      statusCode: 404,
+      message: "Order not found",
+      code: "CHECKOUT_ORDER_NOT_FOUND",
+    };
+  }
+
+  if (String(order.userId) !== String(requester.userId)) {
+    return {
+      ok: false,
+      statusCode: 403,
+      message: "Permission denied",
+      code: "CHECKOUT_FORBIDDEN",
+    };
+  }
+
+  if (order.orderStatus !== "delivered") {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "Chỉ có thể xác nhận nhận hàng khi đơn ở trạng thái đã giao.",
+      code: "CHECKOUT_RECEIPT_CONFIRM_NOT_ALLOWED",
+    };
+  }
+
+  const previousStatus = order.orderStatus;
+  const now = new Date();
+  order.orderStatus = "received";
+  order.receivedAt = now;
+  if (order.paymentMethod === "cod" && order.paymentStatus === "unpaid") {
+    order.paymentStatus = "paid";
+  }
+  await order.save();
+  await emitOrderStatusEmail({ order, previousStatus, config });
+
+  return {
+    ok: true,
+    statusCode: 200,
+    data: {
+      item: order,
+      order,
+    },
+    legacy: {
+      status: "success",
+      data: mapOrderLegacy(order),
+    },
+  };
+};
+
+const checkReviewEligibility = async ({ requester, productId, orderId = null }) => {
+  const pid = String(productId || "").trim();
+  const oid = String(orderId || "").trim();
+
+  if (!pid) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "productId is required",
+      code: "CHECKOUT_PRODUCT_REQUIRED",
+    };
+  }
+
+  let orders = [];
+  if (oid) {
+    const candidate = await Order.findById(oid);
+    if (candidate && String(candidate.userId) === String(requester.userId)) {
+      orders = [candidate];
+    }
+  } else {
+    orders = await Order.find({ userId: String(requester.userId), "items.productId": pid }).sort({
+      createdAt: -1,
+    });
+  }
+
+  if (!orders.length) {
+    return {
+      ok: true,
+      statusCode: 200,
+      data: {
+        eligible: false,
+        reasonCode: "NOT_PURCHASED",
+        message: "Bạn chỉ có thể đánh giá sản phẩm đã mua.",
+      },
+    };
+  }
+
+  const matchedOrder = orders.find((order) => hasProductInOrder(order, pid));
+  if (!matchedOrder) {
+    return {
+      ok: true,
+      statusCode: 200,
+      data: {
+        eligible: false,
+        reasonCode: "NOT_PURCHASED",
+        message: "Bạn chỉ có thể đánh giá sản phẩm đã mua.",
+      },
+    };
+  }
+
+  const status = String(matchedOrder.orderStatus || "").toLowerCase();
+  const postWindow = buildPostDeliveryWindow({ order: matchedOrder });
+  const payload = {
+    orderId: matchedOrder._id,
+    orderStatus: status,
+    receiptConfirmedAt: postWindow.receiptAt,
+    reviewDeadlineAt: postWindow.reviewDeadlineAt,
+    returnDeadlineAt: postWindow.returnDeadlineAt,
+    reviewWindowOpen: postWindow.reviewWindowOpen,
+    returnWindowOpen: postWindow.returnWindowOpen,
+  };
+
+  if (RETURN_FLOW_SET.has(status)) {
+    return {
+      ok: true,
+      statusCode: 200,
+      data: {
+        ...payload,
+        eligible: false,
+        reasonCode: "ORDER_IN_RETURN_FLOW",
+        message: "Đơn hàng đang trong quy trình hoàn trả nên không thể đánh giá.",
+      },
+    };
+  }
+
+  if (status === "completed") {
+    return {
+      ok: true,
+      statusCode: 200,
+      data: {
+        ...payload,
+        eligible: false,
+        reasonCode: "ORDER_FINALIZED",
+        message: "Đơn hàng đã hoàn tất sau đánh giá.",
+      },
+    };
+  }
+
+  if (status !== "received") {
+    return {
+      ok: true,
+      statusCode: 200,
+      data: {
+        ...payload,
+        eligible: false,
+        reasonCode: "RECEIPT_NOT_CONFIRMED",
+        message: "Bạn cần xác nhận đã nhận hàng trước khi đánh giá.",
+      },
+    };
+  }
+
+  if (!postWindow.reviewWindowOpen) {
+    return {
+      ok: true,
+      statusCode: 200,
+      data: {
+        ...payload,
+        eligible: false,
+        reasonCode: "REVIEW_WINDOW_EXPIRED",
+        message: "Đã quá thời hạn 14 ngày để đánh giá sản phẩm.",
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    statusCode: 200,
+    data: {
+      ...payload,
+      eligible: true,
+      reasonCode: null,
+      message: "Đủ điều kiện đánh giá.",
+    },
+  };
+};
+
+const completeOrderAfterReview = async ({ requester, orderId, productId, config }) => {
+  const order = await Order.findById(orderId);
+
+  if (!order) {
+    return {
+      ok: false,
+      statusCode: 404,
+      message: "Order not found",
+      code: "CHECKOUT_ORDER_NOT_FOUND",
+    };
+  }
+
+  if (String(order.userId) !== String(requester.userId)) {
+    return {
+      ok: false,
+      statusCode: 403,
+      message: "Permission denied",
+      code: "CHECKOUT_FORBIDDEN",
+    };
+  }
+
+  const pid = String(productId || "").trim();
+  if (!pid || !hasProductInOrder(order, pid)) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "Product does not belong to this order",
+      code: "CHECKOUT_REVIEW_ORDER_MISMATCH",
+    };
+  }
+
+  if (order.orderStatus !== "received") {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "Order is not eligible for post-delivery review completion",
+      code: "CHECKOUT_INVALID_ORDER_TRANSITION",
+    };
+  }
+
+  const windowInfo = buildPostDeliveryWindow({ order });
+  if (!windowInfo.reviewWindowOpen) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "Review window expired",
+      code: "CHECKOUT_REVIEW_WINDOW_EXPIRED",
+    };
+  }
+
+  const previousStatus = order.orderStatus;
+  const now = new Date();
+  order.orderStatus = "completed";
+  order.reviewedAt = now;
+  order.completedAt = now;
+  if (order.paymentMethod === "cod" && order.paymentStatus === "unpaid") {
+    order.paymentStatus = "paid";
+  }
+  await order.save();
+  await emitOrderStatusEmail({ order, previousStatus, config });
+
+  return {
+    ok: true,
+    statusCode: 200,
+    data: {
+      item: order,
+      order,
+    },
+    legacy: {
+      status: "success",
+      data: mapOrderLegacy(order),
+    },
+  };
+};
+
 const requestOrderReturn = async ({ requester, orderId, reason, config }) => {
   const order = await Order.findById(orderId);
 
@@ -464,12 +774,22 @@ const requestOrderReturn = async ({ requester, orderId, reason, config }) => {
     };
   }
 
-  if (order.orderStatus !== "completed") {
+  if (order.orderStatus !== "received") {
     return {
       ok: false,
       statusCode: 400,
-      message: "Chỉ có thể yêu cầu hoàn trả khi đơn đã hoàn tất.",
+      message: "Chỉ có thể yêu cầu hoàn trả sau khi đã xác nhận nhận hàng.",
       code: "CHECKOUT_RETURN_NOT_ALLOWED",
+    };
+  }
+
+  const windowInfo = buildPostDeliveryWindow({ order });
+  if (!windowInfo.returnWindowOpen) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "Đã quá thời hạn 7 ngày để gửi yêu cầu hoàn trả.",
+      code: "CHECKOUT_RETURN_WINDOW_EXPIRED",
     };
   }
 
@@ -530,8 +850,13 @@ const updateAdminOrderStatus = async ({ orderId, nextStatus, config }) => {
   const previousStatus = order.orderStatus;
   order.orderStatus = nextStatus;
 
+  if (nextStatus === "delivered") {
+    order.deliveredAt = new Date();
+  }
+
   if (nextStatus === "completed") {
     order.paymentStatus = order.paymentMethod === "cod" ? "paid" : order.paymentStatus;
+    order.completedAt = new Date();
   }
 
   if (nextStatus === "cancelled") {
@@ -561,6 +886,9 @@ module.exports = {
   listOrdersByUserId,
   getOrderById,
   cancelOrder,
+  confirmOrderReceived,
+  checkReviewEligibility,
+  completeOrderAfterReview,
   requestOrderReturn,
   listAdminOrders,
   updateAdminOrderStatus,

@@ -9,6 +9,7 @@ const reviewSchema = new mongoose.Schema(
       index: true,
     },
     userId: { type: String, default: null },
+    orderId: { type: String, default: null },
     username: { type: String, default: "Anonymous" },
     content: { type: String, required: true },
     stars: { type: Number, required: true, min: 1, max: 5 },

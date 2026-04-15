@@ -1,8 +1,16 @@
 const productService = require("../services/productService");
 const { sendServiceResult } = require("../utils/http");
+const { resolveCatalogTenantContext } = require("../services/tenantContextService");
 
 const listProducts = async (req, res) => {
-  const result = await productService.listProducts({ query: req.query });
+  const tenantContext = resolveCatalogTenantContext({
+    req,
+    config: req.app.locals.config || {},
+  });
+  const result = await productService.listProducts({
+    query: req.query,
+    tenantId: tenantContext.tenantId,
+  });
   return sendServiceResult(res, result);
 };
 

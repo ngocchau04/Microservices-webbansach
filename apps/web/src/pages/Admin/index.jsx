@@ -120,7 +120,7 @@ function Admin() {
             onClick={() => setActiveTab("support")}
           >
             <MdSupportAgent className="Admin-sidebar__icon" aria-hidden />
-            <span className="Admin-sidebar__label">Feedback</span>
+            <span className="Admin-sidebar__label">Hỗ trợ</span>
           </button>
         </nav>
 

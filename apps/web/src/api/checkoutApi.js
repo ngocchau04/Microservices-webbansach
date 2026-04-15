@@ -39,6 +39,12 @@ export const createOrder = (payload) => getData(apiClient.post("/api/checkout/or
 export const getMyOrders = () => getData(apiClient.get("/api/checkout/orders/me"));
 export const getOrderById = (id) => getData(apiClient.get(`/api/checkout/orders/${id}`));
 export const cancelOrder = (id) => getData(apiClient.patch(`/api/checkout/orders/${id}/cancel`));
+export const confirmOrderReceived = (id) =>
+  getData(apiClient.patch(`/api/checkout/orders/${id}/confirm-received`));
+export const getReviewEligibility = (payload) =>
+  getData(apiClient.post("/api/checkout/orders/review-eligibility", payload));
+export const completeOrderAfterReview = (id, payload) =>
+  getData(apiClient.patch(`/api/checkout/orders/${id}/complete-after-review`, payload));
 export const requestOrderReturn = (id, payload) =>
   getData(apiClient.patch(`/api/checkout/orders/${id}/request-return`, payload));
 export const getAdminOrders = () => getData(apiClient.get("/api/checkout/admin/orders"));

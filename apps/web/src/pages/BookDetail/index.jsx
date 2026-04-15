@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import "./BookDetail.css";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
@@ -11,7 +10,7 @@ import {
   getProductReviews,
   getSimilarProducts,
 } from "../../api/catalogApi";
-import { upsertCartItem } from "../../api/checkoutApi";
+import { getReviewEligibility, upsertCartItem } from "../../api/checkoutApi";
 import { toggleFavorite } from "../../api/authApi";
 
 const BookDetail = () => {
@@ -25,6 +24,10 @@ const BookDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const [similarBooks, setSimilarBooks] = useState([]);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [reviewEligibility, setReviewEligibility] = useState(null);
+  const [reviewEligibilityMsg, setReviewEligibilityMsg] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   useEffect(() => {
     getProductById(id)
@@ -63,8 +66,45 @@ const BookDetail = () => {
     }
   }, [book]);
 
+  useEffect(() => {
+    const loadEligibility = async () => {
+      const token = localStorage.getItem("token");
+      const params = new URLSearchParams(location.search);
+      const orderId = params.get("reviewOrder") || undefined;
+
+      if (!token || !user?._id) {
+        setReviewEligibility(null);
+        setReviewEligibilityMsg("Chỉ khách đã mua và xác nhận nhận hàng mới có thể đánh giá.");
+        return;
+      }
+
+      try {
+        const payload = await getReviewEligibility({ productId: id, orderId });
+        setReviewEligibility(payload || null);
+        setReviewEligibilityMsg(
+          payload?.eligible
+            ? "Bạn đủ điều kiện đánh giá sản phẩm này."
+            : payload?.message || "Bạn chưa đủ điều kiện đánh giá sản phẩm này."
+        );
+      } catch (error) {
+        console.error("Error loading review eligibility:", error);
+        const msg =
+          error?.response?.data?.message ||
+          "Không xác minh được quyền đánh giá. Vui lòng thử lại sau.";
+        setReviewEligibility(null);
+        setReviewEligibilityMsg(msg);
+      }
+    };
+
+    loadEligibility();
+  }, [id, location.search, user?._id]);
+
   const handleFeedbackSubmit = (e) => {
     e.preventDefault();
+    if (!reviewEligibility?.eligible) {
+      alert(reviewEligibilityMsg || "Bạn chưa đủ điều kiện đánh giá.");
+      return;
+    }
     if (feedback.trim() === "" || stars < 1) {
       alert("Thêm bình luận để đánh giá.");
       return;
@@ -72,9 +112,10 @@ const BookDetail = () => {
 
     const token = localStorage.getItem("token");
 
+    setReviewSubmitting(true);
     createProductReview(
       id,
-      { content: feedback, stars },
+      { content: feedback, stars, orderId: reviewEligibility?.orderId },
       token ? { headers: { Authorization: `Bearer ${token}` } } : {}
     )
       .then((data) => {
@@ -90,8 +131,23 @@ const BookDetail = () => {
         }
         setFeedback("");
         setStars(0);
+        setReviewEligibility((prev) =>
+          prev
+            ? {
+                ...prev,
+                eligible: false,
+                message: "Đơn hàng đã hoàn tất sau khi đánh giá.",
+              }
+            : prev
+        );
+        setReviewEligibilityMsg("Đơn hàng đã hoàn tất sau khi đánh giá.");
       })
-      .catch((error) => console.error("Error submitting feedback:", error));
+      .catch((error) => {
+        console.error("Error submitting feedback:", error);
+        const msg = error?.response?.data?.message || "Không thể gửi đánh giá.";
+        alert(msg);
+      })
+      .finally(() => setReviewSubmitting(false));
   };
 
   const handleAddToCart = async () => {
@@ -369,56 +425,62 @@ const BookDetail = () => {
           </div>
 
           <div className="book-reviews__form-shell">
-            <form className="feedback-form book-reviews__form" onSubmit={handleFeedbackSubmit}>
-              <div className="book-reviews__form-intro">
-                <h4 className="book-reviews__form-title">Viết đánh giá của bạn</h4>
-                <p className="book-reviews__form-lead">
-                  Hãy đánh giá để giúp những độc giả khác lựa chọn được cuốn sách phù hợp nhất!
-                </p>
-              </div>
-
-              <div className="book-reviews__rating-panel">
-                <span className="book-reviews__rating-label" id="rating-label">
-                  Mức đánh giá
-                </span>
-                <div className="rating-input" role="group" aria-labelledby="rating-label">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      className={`book-review-star ${stars >= star ? "book-review-star--active" : ""}`}
-                      onClick={() => setStars(star)}
-                      aria-label={`${star} sao`}
-                    >
-                      ★
-                    </button>
-                  ))}
+            {reviewEligibility?.eligible ? (
+              <form className="feedback-form book-reviews__form" onSubmit={handleFeedbackSubmit}>
+                <div className="book-reviews__form-intro">
+                  <h4 className="book-reviews__form-title">Viết đánh giá của bạn</h4>
+                  <p className="book-reviews__form-lead">
+                    Bạn có thể đánh giá trong 14 ngày sau khi xác nhận đã nhận hàng.
+                  </p>
                 </div>
-                <p className="book-reviews__rating-hint">
-                  {stars > 0 ? `Đã chọn: ${stars} / 5 sao` : "Chọn từ 1 đến 5 sao theo mức độ hài lòng."}
-                </p>
-              </div>
 
-              <div className="book-reviews__field">
-                <label className="book-reviews__field-label" htmlFor="book-review-body">
-                  Nội dung nhận xét
-                </label>
-                <textarea
-                  id="book-review-body"
-                  className="book-reviews__textarea"
-                  placeholder="Chia sẻ cảm nhận về nội dung, chất lượng in, trải nghiệm đọc..."
-                  rows={4}
-                  value={feedback}
-                  onChange={(e) => setFeedback(e.target.value)}
-                />
-              </div>
+                <div className="book-reviews__rating-panel">
+                  <span className="book-reviews__rating-label" id="rating-label">
+                    Mức đánh giá
+                  </span>
+                  <div className="rating-input" role="group" aria-labelledby="rating-label">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        className={`book-review-star ${stars >= star ? "book-review-star--active" : ""}`}
+                        onClick={() => setStars(star)}
+                        aria-label={`${star} sao`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                  <p className="book-reviews__rating-hint">
+                    {stars > 0 ? `Đã chọn: ${stars} / 5 sao` : "Chọn từ 1 đến 5 sao theo mức độ hài lòng."}
+                  </p>
+                </div>
 
-              <div className="book-reviews__submit-row">
-                <button type="submit" className="book-feedback-submit">
-                  Gửi
-                </button>
+                <div className="book-reviews__field">
+                  <label className="book-reviews__field-label" htmlFor="book-review-body">
+                    Nội dung nhận xét
+                  </label>
+                  <textarea
+                    id="book-review-body"
+                    className="book-reviews__textarea"
+                    placeholder="Chia sẻ cảm nhận về nội dung, chất lượng in, trải nghiệm đọc..."
+                    rows={4}
+                    value={feedback}
+                    onChange={(e) => setFeedback(e.target.value)}
+                  />
+                </div>
+
+                <div className="book-reviews__submit-row">
+                  <button type="submit" className="book-feedback-submit" disabled={reviewSubmitting}>
+                    {reviewSubmitting ? "Đang gửi..." : "Gửi"}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="book-reviews__eligibility-note">
+                {reviewEligibilityMsg || "Chỉ khách đã mua và xác nhận nhận hàng mới có thể đánh giá."}
               </div>
-            </form>
+            )}
           </div>
         </section>
       </div>

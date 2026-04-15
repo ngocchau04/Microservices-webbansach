@@ -34,9 +34,24 @@ const updateUserStatus = async (req, res) => {
   return sendServiceResult(res, result);
 };
 
+const updateUser = async (req, res) => {
+  const result = await authService.updateUserByAdmin({
+    userId: req.params.id,
+    payload: req.body,
+  });
+  return sendServiceResult(res, result);
+};
+
+const deleteUser = async (req, res) => {
+  const result = await authService.deleteUserByAdmin({ userId: req.params.id });
+  return sendServiceResult(res, result);
+};
+
 module.exports = {
   listUsers,
   countUsers,
   getUserById,
   updateUserStatus,
+  updateUser,
+  deleteUser,
 };

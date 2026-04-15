@@ -6,6 +6,7 @@ const signAccessToken = ({ user, config }) =>
       userId: user._id,
       email: user.email,
       role: user.role,
+      tenantId: user.tenantId || "public",
     },
     config.jwtSecret,
     { expiresIn: config.jwtExpiresIn }

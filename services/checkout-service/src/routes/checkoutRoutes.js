@@ -27,8 +27,23 @@ const createCheckoutRoutes = (config) => {
 
   router.post("/orders", requireAuth, asyncHandler(orderController.createOrder));
   router.get("/orders/me", requireAuth, asyncHandler(orderController.getMyOrders));
+  router.post(
+    "/orders/review-eligibility",
+    requireAuth,
+    asyncHandler(orderController.checkReviewEligibility)
+  );
   router.get("/orders/:id", requireAuth, asyncHandler(orderController.getOrderById));
   router.patch("/orders/:id/cancel", requireAuth, asyncHandler(orderController.cancelOrder));
+  router.patch(
+    "/orders/:id/confirm-received",
+    requireAuth,
+    asyncHandler(orderController.confirmOrderReceived)
+  );
+  router.patch(
+    "/orders/:id/complete-after-review",
+    requireAuth,
+    asyncHandler(orderController.completeOrderAfterReview)
+  );
   router.patch(
     "/orders/:id/request-return",
     requireAuth,

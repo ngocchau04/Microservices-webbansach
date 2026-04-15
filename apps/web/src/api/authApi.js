@@ -76,6 +76,12 @@ export const getUserById = (id) =>
 export const updateUserStatus = (id, payload) =>
   withNormalizedResponse(apiClient.patch(`/api/auth/users/${id}/status`, payload));
 
+export const updateUserByAdmin = (id, payload) =>
+  withNormalizedResponse(apiClient.patch(`/api/auth/users/${id}`, payload));
+
+export const deleteUserByAdmin = (id) =>
+  withNormalizedResponse(apiClient.delete(`/api/auth/users/${id}`));
+
 export const getOrdersByUser = (userId) =>
   withNormalizedResponse(apiClient.get(`/api/auth/users/${userId}/orders`));
 export const getFavorites = (config = {}) =>

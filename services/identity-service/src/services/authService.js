@@ -31,6 +31,17 @@ const normalizeFavoriteList = (favorite = []) =>
         .filter(Boolean)
     : [];
 
+const normalizeTenantId = (value, fallback = "public") => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) {
+    return fallback;
+  }
+  if (!/^[a-z0-9_-]{1,64}$/.test(normalized)) {
+    return fallback;
+  }
+  return normalized;
+};
+
 const generateVerificationCode = () =>
   `${Math.floor(Math.random() * 1000000)}`.padStart(6, "0");
 
@@ -253,6 +264,7 @@ const verifyAccount = async ({ email, number, code }) => {
   }
 
   await User.create({
+    tenantId: normalizeTenantId("public"),
     name: pending.name,
     sdt: pending.sdt,
     email: pending.email,
@@ -442,6 +454,7 @@ const googleLogin = async ({ payload, config }) => {
   let user = await User.findOne({ email: googleUser.email });
   if (!user) {
     user = await User.create({
+      tenantId: normalizeTenantId("public"),
       email: googleUser.email,
       name: googleUser.name,
       password: crypto.randomBytes(16).toString("hex"),
@@ -766,6 +779,105 @@ const updateUserStatus = async ({ userId, status, isActive }) => {
   };
 };
 
+const updateUserByAdmin = async ({ userId, payload = {} }) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    return {
+      ok: false,
+      statusCode: 404,
+      message: "User not found",
+      code: "AUTH_USER_NOT_FOUND",
+    };
+  }
+
+  if (String(user.role || "").toLowerCase() === "admin") {
+    return {
+      ok: false,
+      statusCode: 403,
+      message: "Cannot edit admin account from customer management",
+      code: "AUTH_FORBIDDEN",
+    };
+  }
+
+  const next = {};
+
+  if (typeof payload.name === "string" && payload.name.trim()) {
+    next.name = payload.name.trim();
+  }
+
+  if (typeof payload.sdt === "string") {
+    next.sdt = payload.sdt.trim();
+  }
+
+  if (typeof payload.email === "string" && payload.email.trim()) {
+    const nextEmail = payload.email.trim().toLowerCase();
+    if (!isEmail(nextEmail)) {
+      return {
+        ok: false,
+        statusCode: 400,
+        message: "Email is invalid",
+        code: "AUTH_VALIDATION_ERROR",
+      };
+    }
+    if (nextEmail !== String(user.email || "").toLowerCase()) {
+      const existing = await User.findOne({ email: nextEmail });
+      if (existing) {
+        return {
+          ok: false,
+          statusCode: 409,
+          message: "Email already exists",
+          code: "AUTH_EMAIL_EXISTS",
+        };
+      }
+    }
+    next.email = nextEmail;
+  }
+
+  if (!Object.keys(next).length) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "No valid fields to update",
+      code: "AUTH_VALIDATION_ERROR",
+    };
+  }
+
+  const updated = await User.findByIdAndUpdate(userId, next, { new: true });
+  return {
+    ok: true,
+    statusCode: 200,
+    data: { user: updated },
+  };
+};
+
+const deleteUserByAdmin = async ({ userId }) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    return {
+      ok: false,
+      statusCode: 404,
+      message: "User not found",
+      code: "AUTH_USER_NOT_FOUND",
+    };
+  }
+
+  if (String(user.role || "").toLowerCase() === "admin") {
+    return {
+      ok: false,
+      statusCode: 403,
+      message: "Cannot delete admin account from customer management",
+      code: "AUTH_FORBIDDEN",
+    };
+  }
+
+  await User.findByIdAndDelete(userId);
+  return {
+    ok: true,
+    statusCode: 200,
+    data: { deleted: true, userId },
+  };
+};
+
 module.exports = {
   register,
   checkPendingEmail,
@@ -782,6 +894,8 @@ module.exports = {
   countUsers,
   getUserById,
   updateUserStatus,
+  updateUserByAdmin,
+  deleteUserByAdmin,
   getFavorites,
   addFavorite,
   removeFavorite,

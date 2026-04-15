@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const corpusSchema = new mongoose.Schema(
   {
+    tenantId: { type: String, required: true, default: "public", index: true },
     sourceType: {
       type: String,
       enum: ["catalog", "support", "faq"],
@@ -20,6 +21,8 @@ const corpusSchema = new mongoose.Schema(
 );
 
 corpusSchema.index({ title: "text", body: "text", keywords: "text" });
+corpusSchema.index({ tenantId: 1, sourceType: 1, refId: 1 });
+corpusSchema.index({ tenantId: 1, sourceType: 1 });
 
 const CorpusDocument = mongoose.model("assistant_corpus", corpusSchema);
 

@@ -3,12 +3,22 @@ const path = require("path");
 const { CorpusDocument } = require("../models/CorpusDocument");
 const { normalize } = require("./retrievalService");
 const { authorKeyFromAuthor } = require("./graphService");
+const { normalizeTenantId } = require("./tenantContextService");
 
-const fetchJson = async (url, { timeoutMs = 20000 } = {}) => {
+const fetchJson = async (
+  url,
+  { timeoutMs = 20000, tenantId = "public", catalogInternalApiKey = "" } = {}
+) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(url, { signal: controller.signal });
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "x-tenant-id": tenantId,
+        ...(catalogInternalApiKey ? { "x-internal-api-key": catalogInternalApiKey } : {}),
+      },
+    });
     if (!response.ok) {
       return { ok: false, status: response.status, message: `HTTP ${response.status}` };
     }
@@ -27,7 +37,7 @@ const loadDefaultFaq = () => {
   return JSON.parse(raw);
 };
 
-const buildCatalogDocs = (items = []) =>
+const buildCatalogDocs = (items = [], tenantId = "public") =>
   items.map((item) => {
     const id = `${item._id || item.id || ""}`;
     const title = item.title || "Sản phẩm";
@@ -50,6 +60,7 @@ const buildCatalogDocs = (items = []) =>
     const categoryKey = type ? String(type) : "";
 
     return {
+      tenantId,
       sourceType: "catalog",
       refId: id,
       title: `Sách: ${title}`,
@@ -119,13 +130,21 @@ const buildCatalogDocs = (items = []) =>
 const buildNormalizedText = (doc) =>
   normalize(`${doc.title || ""} ${doc.body || ""} ${(doc.keywords || []).join(" ")}`);
 
-const upsertDocs = async (docs) => {
+const upsertDocs = async (docs, tenantId = "public") => {
+  const scopedTenantId = normalizeTenantId(tenantId, "public");
   let upserted = 0;
   for (const doc of docs) {
     const normalizedText = buildNormalizedText(doc);
     await CorpusDocument.updateOne(
-      { sourceType: doc.sourceType, refId: doc.refId },
-      { $set: { ...doc, normalizedText, indexedAt: new Date() } },
+      { tenantId: scopedTenantId, sourceType: doc.sourceType, refId: doc.refId },
+      {
+        $set: {
+          ...doc,
+          tenantId: scopedTenantId,
+          normalizedText,
+          indexedAt: new Date(),
+        },
+      },
       { upsert: true }
     );
     upserted += 1;
@@ -141,9 +160,11 @@ const extractCatalogItems = (json) => {
   return Array.isArray(items) ? items : null;
 };
 
-const reindexFaq = async () => {
+const reindexFaq = async (tenantId = "public") => {
+  const scopedTenantId = normalizeTenantId(tenantId, "public");
   const faqItems = loadDefaultFaq();
   const docs = faqItems.map((item) => ({
+    tenantId: scopedTenantId,
     sourceType: "faq",
     refId: item.id,
     title: item.title,
@@ -165,12 +186,14 @@ const reindexFaq = async () => {
       },
     },
   }));
-  return upsertDocs(docs);
+  return upsertDocs(docs, scopedTenantId);
 };
 
-const reindexSupportHints = async () => {
+const reindexSupportHints = async (tenantId = "public") => {
+  const scopedTenantId = normalizeTenantId(tenantId, "public");
   const docs = [
     {
+      tenantId: scopedTenantId,
       sourceType: "support",
       refId: "guidance-general",
       title: "Gợi ý: phản hồi và hỗ trợ",
@@ -179,16 +202,28 @@ const reindexSupportHints = async () => {
       metadata: { kind: "static-hint" },
     },
   ];
-  return upsertDocs(docs);
+  return upsertDocs(docs, scopedTenantId);
 };
 
-const runReindex = async (config) => {
-  const faqCount = await reindexFaq();
-  const supportCount = await reindexSupportHints();
+const runReindex = async (config, tenantId = "public") => {
+  const scopedTenantId = normalizeTenantId(tenantId, config?.defaultTenantId || "public");
+  if (!config.catalogInternalApiKey) {
+    return {
+      ok: false,
+      statusCode: 503,
+      message: "Catalog internal API key is not configured",
+      code: "ASSISTANT_REINDEX_CATALOG_AUTH_MISSING",
+    };
+  }
+  const faqCount = await reindexFaq(scopedTenantId);
+  const supportCount = await reindexSupportHints(scopedTenantId);
 
   const pageSize = 100;
   const firstUrl = `${config.catalogServiceUrl}/products?limit=${pageSize}&page=1`;
-  const firstResult = await fetchJson(firstUrl);
+  const firstResult = await fetchJson(firstUrl, {
+    tenantId: scopedTenantId,
+    catalogInternalApiKey: config.catalogInternalApiKey,
+  });
 
   if (!firstResult.ok) {
     return {
@@ -209,11 +244,11 @@ const runReindex = async (config) => {
     };
   }
 
-  await CorpusDocument.deleteMany({ sourceType: "catalog" });
+  await CorpusDocument.deleteMany({ tenantId: scopedTenantId, sourceType: "catalog" });
 
   let catalogUpserted = 0;
   if (items1.length > 0) {
-    catalogUpserted += await upsertDocs(buildCatalogDocs(items1));
+    catalogUpserted += await upsertDocs(buildCatalogDocs(items1, scopedTenantId), scopedTenantId);
   }
 
   const total = firstResult.json?.data?.total;
@@ -234,7 +269,10 @@ const runReindex = async (config) => {
     }
 
     const url = `${config.catalogServiceUrl}/products?limit=${pageSize}&page=${page}`;
-    const result = await fetchJson(url);
+    const result = await fetchJson(url, {
+      tenantId: scopedTenantId,
+      catalogInternalApiKey: config.catalogInternalApiKey,
+    });
     if (!result.ok) {
       return {
         ok: false,
@@ -258,7 +296,7 @@ const runReindex = async (config) => {
       break;
     }
 
-    catalogUpserted += await upsertDocs(buildCatalogDocs(items));
+    catalogUpserted += await upsertDocs(buildCatalogDocs(items, scopedTenantId), scopedTenantId);
     lastItems = items;
   }
 
@@ -266,6 +304,7 @@ const runReindex = async (config) => {
     ok: true,
     statusCode: 200,
     data: {
+      tenantId: scopedTenantId,
       catalogUpserted,
       faqUpserted: faqCount,
       supportUpserted: supportCount,

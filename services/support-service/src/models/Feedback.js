@@ -15,6 +15,7 @@ const messageSchema = new mongoose.Schema(
 
 const feedbackSchema = new mongoose.Schema(
   {
+    tenantId: { type: String, required: true, default: "public", index: true },
     userId: { type: String, required: true, index: true },
     userEmail: { type: String, required: true, index: true },
     subject: { type: String, required: true },
@@ -63,6 +64,9 @@ const feedbackSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+feedbackSchema.index({ tenantId: 1, channel: 1, userId: 1, updatedAt: -1 });
+feedbackSchema.index({ tenantId: 1, channel: 1, status: 1, handoffState: 1, updatedAt: -1 });
 
 const Feedback = mongoose.model("support_feedback", feedbackSchema);
 

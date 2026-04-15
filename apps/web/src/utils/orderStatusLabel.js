@@ -7,6 +7,8 @@ export const ORDER_STATUS_LABELS = {
   pending: "Chờ xác nhận",
   confirmed: "Đã xác nhận",
   shipping: "Đang vận chuyển",
+  delivered: "Đã giao hàng",
+  received: "Đã nhận hàng",
   completed: "Hoàn tất",
   cancelled: "Đã hủy",
   return_requested: "Yêu cầu hoàn trả",

@@ -94,6 +94,7 @@ describe("feedbackService", () => {
 
   test("createOrOpenAssistantHandoff creates conversation and appends message", async () => {
     const created = await feedbackService.createOrOpenAssistantHandoff({
+      tenantId: "tenant_a",
       payload: {
         userId: "u2",
         userEmail: "u2@example.com",
@@ -109,6 +110,7 @@ describe("feedbackService", () => {
     expect(created.data.conversation.channel).toBe("assistant_handoff");
 
     const reopened = await feedbackService.createOrOpenAssistantHandoff({
+      tenantId: "tenant_a",
       payload: {
         userId: "u2",
         latestUserMessage: "cho minh gap nhan vien",
@@ -116,6 +118,28 @@ describe("feedbackService", () => {
     });
     expect(reopened.ok).toBe(true);
     expect(reopened.data.handoff.created).toBe(false);
+  });
+
+  test("assistant handoff stays tenant scoped", async () => {
+    const first = await feedbackService.createOrOpenAssistantHandoff({
+      tenantId: "tenant_a",
+      payload: {
+        userId: "u5",
+        latestUserMessage: "need human",
+      },
+    });
+    const second = await feedbackService.createOrOpenAssistantHandoff({
+      tenantId: "tenant_b",
+      payload: {
+        userId: "u5",
+        latestUserMessage: "need human for tenant b",
+      },
+    });
+
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(true);
+    expect(second.data.handoff.created).toBe(true);
+    expect(second.data.conversation._id).not.toBe(first.data.conversation._id);
   });
 
   test("addConversationMessage from admin flips state to human_active", async () => {

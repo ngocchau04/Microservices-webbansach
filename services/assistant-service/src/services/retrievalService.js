@@ -1,5 +1,6 @@
 const { CorpusDocument } = require("../models/CorpusDocument");
 const { analyzeQuery, normalize, tokenize, CONCEPT_DEFINITIONS } = require("./queryUnderstandingService");
+const { normalizeTenantId } = require("./tenantContextService");
 
 const escapeRegex = (s = "") => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -42,14 +43,17 @@ const scoreDoc = ({ queryTokens = [], concepts = [], doc }) => {
   return lexicalScore + conceptScore + exactHitBonus + sourceBias;
 };
 
-const findWithTextIndex = async (rawQuery) => {
+const resolveTenantId = (tenantId) => normalizeTenantId(tenantId, "public");
+
+const findWithTextIndex = async ({ rawQuery, tenantId }) => {
   const q = (rawQuery || "").trim();
   if (!q) {
     return [];
   }
+  const scopedTenantId = resolveTenantId(tenantId);
   try {
     const results = await CorpusDocument.find(
-      { $text: { $search: q } },
+      { tenantId: scopedTenantId, $text: { $search: q } },
       { score: { $meta: "textScore" } }
     )
       .sort({ score: { $meta: "textScore" } })
@@ -61,10 +65,11 @@ const findWithTextIndex = async (rawQuery) => {
   }
 };
 
-const findWithTokens = async (queryTokens, concepts = []) => {
+const findWithTokens = async (queryTokens, concepts = [], tenantId = "public") => {
   if (!queryTokens.length) {
     return [];
   }
+  const scopedTenantId = resolveTenantId(tenantId);
 
   const ors = queryTokens.flatMap((t) => {
     const rx = new RegExp(escapeRegex(t), "i");
@@ -76,7 +81,7 @@ const findWithTokens = async (queryTokens, concepts = []) => {
     ];
   });
 
-  const docs = await CorpusDocument.find({ $or: ors }).limit(40).lean();
+  const docs = await CorpusDocument.find({ tenantId: scopedTenantId, $or: ors }).limit(40).lean();
 
   const scored = docs
     .map((doc) => ({ doc, score: scoreDoc({ queryTokens, concepts, doc }) }))
@@ -88,6 +93,7 @@ const findWithTokens = async (queryTokens, concepts = []) => {
 
 const retrieve = async (message, options = {}) => {
   const context = options.context && typeof options.context === "object" ? options.context : {};
+  const tenantId = resolveTenantId(options.tenantId);
   const analysis = options.analysis || analyzeQuery(message, { context });
   const queryTokens = analysis.expandedTokens || tokenize(analysis.rewrittenQuery || message);
 
@@ -99,7 +105,7 @@ const retrieve = async (message, options = {}) => {
 
   const textMatches = [];
   for (const query of candidateQueries) {
-    const found = await findWithTextIndex(query);
+    const found = await findWithTextIndex({ rawQuery: query, tenantId });
     if (found.length) {
       textMatches.push(...found);
     }
@@ -107,7 +113,7 @@ const retrieve = async (message, options = {}) => {
 
   let docs = textMatches;
   if (!docs.length) {
-    docs = await findWithTokens(queryTokens, analysis.concepts || []);
+    docs = await findWithTokens(queryTokens, analysis.concepts || [], tenantId);
   }
 
   const unique = [];
@@ -143,6 +149,7 @@ const retrieve = async (message, options = {}) => {
       topScore: rescored[0] ? rescored[0].score : 0,
       matchedCount: rescored.length,
       candidateQueries,
+      tenantId,
     },
   };
 };
@@ -225,8 +232,11 @@ const rankCatalogHybrid = (
   return scored;
 };
 
-const pickRecommendations = async (queryTokens = [], concepts = []) => {
-  const docs = await CorpusDocument.find({ sourceType: "catalog" }).limit(120).lean();
+const pickRecommendations = async (queryTokens = [], concepts = [], tenantId = "public") => {
+  const scopedTenantId = resolveTenantId(tenantId);
+  const docs = await CorpusDocument.find({ tenantId: scopedTenantId, sourceType: "catalog" })
+    .limit(120)
+    .lean();
   const ranked = rankCatalogHybrid(docs, { queryTokens, concepts, signalsByRefId: {} });
   return ranked.slice(0, 6).map((x) => x.doc);
 };

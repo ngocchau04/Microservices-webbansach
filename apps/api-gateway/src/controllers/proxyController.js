@@ -3,6 +3,7 @@ const {
   resolveTargetBaseUrl,
 } = require("../services/pathRewriteService");
 const { proxyRequest } = require("../services/proxyService");
+const { resolveGatewayTenantId } = require("../services/tenantContextService");
 const { errorResponse } = require("../utils/response");
 
 const proxyByDomain = (config) => async (req, res, next) => {
@@ -41,6 +42,10 @@ const proxyByDomain = (config) => async (req, res, next) => {
       : "";
     const upstreamPath = `${rewrittenRoute.path}${queryString}`;
 
+    if (rewrittenRoute.service === "assistant") {
+      req.headers["x-tenant-id"] = resolveGatewayTenantId(req, config, { upstreamPath });
+    }
+
     await proxyRequest({
       req,
       res,
@@ -49,8 +54,8 @@ const proxyByDomain = (config) => async (req, res, next) => {
       upstreamBaseUrl,
     });
   } catch (error) {
-    error.statusCode = 502;
-    error.code = "UPSTREAM_UNAVAILABLE";
+    error.statusCode = error.statusCode || 502;
+    error.code = error.code || "UPSTREAM_UNAVAILABLE";
     next(error);
   }
 };

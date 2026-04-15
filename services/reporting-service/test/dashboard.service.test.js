@@ -41,6 +41,7 @@ describe("reportingService aggregations", () => {
 
     expect(result.ok).toBe(true);
     expect(result.data.totalOrders).toBe(2);
+    expect(result.data.customerAccountCount).toBe(12);
     expect(result.data.totalUsers).toBe(12);
     expect(result.data.totalRevenue).toBe(300000);
     expect(Array.isArray(result.data.topProducts)).toBe(true);

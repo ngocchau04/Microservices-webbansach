@@ -6,13 +6,15 @@ const chat = async (req, res) => {
   const result = await chatService.chat({
     message: req.body?.message,
     context: req.body?.context && typeof req.body.context === "object" ? req.body.context : {},
+    tenantId: req.tenantId,
+    actor: req.user || null,
     config: req.app.locals.config || {},
   });
   return sendServiceResult(res, result);
 };
 
 const reindex = async (req, res) => {
-  const result = await runReindex(req.app.locals.config);
+  const result = await runReindex(req.app.locals.config, req.tenantId);
   return sendServiceResult(res, result);
 };
 

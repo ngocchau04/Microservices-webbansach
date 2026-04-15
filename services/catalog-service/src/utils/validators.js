@@ -128,6 +128,13 @@ const validateProductPayload = (payload = {}) => {
     return "price must be a valid non-negative number";
   }
 
+  if (payload.stock !== undefined) {
+    const stock = normalizePrice(payload.stock);
+    if (stock === null || stock < 0 || !Number.isInteger(stock)) {
+      return "stock must be a valid non-negative integer";
+    }
+  }
+
   if (!payload.type || typeof payload.type !== "string") {
     return "type is required";
   }

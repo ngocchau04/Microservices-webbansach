@@ -110,6 +110,21 @@ const mockOrderService = {
     statusCode: 200,
     data: { item: { _id: orderId, status: "cancelled" } },
   })),
+  confirmOrderReceived: jest.fn(async ({ orderId }) => ({
+    ok: true,
+    statusCode: 200,
+    data: { item: { _id: orderId, status: "received" } },
+  })),
+  checkReviewEligibility: jest.fn(async () => ({
+    ok: true,
+    statusCode: 200,
+    data: { eligible: true, orderId: "order_1" },
+  })),
+  completeOrderAfterReview: jest.fn(async ({ orderId }) => ({
+    ok: true,
+    statusCode: 200,
+    data: { item: { _id: orderId, status: "completed" } },
+  })),
   listAdminOrders: jest.fn(async () => ({
     ok: true,
     statusCode: 200,

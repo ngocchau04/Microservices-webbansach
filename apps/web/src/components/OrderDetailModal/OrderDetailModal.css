@@ -98,7 +98,10 @@
 
 .order-detail-modal__card--return {
   border-color: rgba(205, 0, 0, 0.12);
-  background: linear-gradient(165deg, #fff 0%, #fffafa 100%);
+  background: linear-gradient(165deg, #fff 0%, #fff7f8 58%, #fcfcfc 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 8px 24px rgba(196, 0, 0, 0.09);
 }
 
 .order-detail-modal__card--totals {
@@ -258,6 +261,175 @@
   margin-top: 4px;
 }
 
+.order-detail-modal__post-head {
+  margin-bottom: 12px;
+}
+
+.order-detail-modal__post-lead {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #5b5b5b;
+}
+
+.order-detail-modal__post-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.order-detail-modal__post-stage {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fff;
+}
+
+.order-detail-modal__post-stage--receipt {
+  border-color: rgba(205, 0, 0, 0.2);
+  background: linear-gradient(150deg, #fff 0%, #fff4f5 100%);
+}
+
+.order-detail-modal__post-stage--finalized {
+  border-color: rgba(22, 101, 52, 0.28);
+  background: linear-gradient(150deg, #f5fff9 0%, #ecfdf5 100%);
+}
+
+.order-detail-modal__post-stage--return-flow {
+  border-color: rgba(180, 83, 9, 0.24);
+  background: linear-gradient(150deg, #fffbeb 0%, #fff7ed 100%);
+}
+
+.order-detail-modal__post-stage-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #7a0508;
+  background: rgba(205, 0, 0, 0.1);
+}
+
+.order-detail-modal__post-stage-text {
+  margin: 10px 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #2f2f2f;
+}
+
+.order-detail-modal__post-window {
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fff 0%, #f9fafb 100%);
+  border: 1px solid rgba(0, 0, 0, 0.09);
+}
+
+.order-detail-modal__post-window p {
+  margin: 0 0 6px;
+  font-size: 0.84rem;
+  color: #374151;
+}
+
+.order-detail-modal__post-window p:last-child {
+  margin-bottom: 0;
+}
+
+.order-detail-modal__post-window-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  border: 1px solid rgba(99, 102, 241, 0.24);
+  color: #3730a3;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.order-detail-modal__post-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.order-detail-modal__action-tile {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  background: #fff;
+}
+
+.order-detail-modal__action-tile h4 {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  color: #111827;
+}
+
+.order-detail-modal__action-tile > p {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.order-detail-modal__action-tile--disabled {
+  background: #f9fafb;
+  border-color: rgba(0, 0, 0, 0.07);
+}
+
+.order-detail-modal__review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.order-detail-modal__review-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fff;
+}
+
+.order-detail-modal__action-tile--disabled .order-detail-modal__review-item {
+  background: #f3f4f6;
+}
+
+.order-detail-modal__review-item span {
+  font-size: 0.85rem;
+  color: #222;
+  font-weight: 600;
+}
+
+.order-detail-modal__btn-secondary {
+  padding: 8px 12px;
+  border-radius: 9px;
+  border: 1px solid rgba(205, 0, 0, 0.28);
+  background: #fff;
+  color: #9e0000;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.order-detail-modal__btn-secondary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  background: #e5e7eb;
+  color: #6b7280;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
 .order-detail-modal__hint {
   margin: 0 0 8px;
   font-size: 0.82rem;
@@ -297,6 +469,10 @@
   color: #fff;
   background: linear-gradient(135deg, #e01820 0%, #9e0000 100%);
   box-shadow: 0 4px 12px rgba(196, 0, 0, 0.28);
+}
+
+.order-detail-modal__btn-primary--wide {
+  width: 100%;
 }
 
 .order-detail-modal__btn-primary:disabled {
@@ -348,4 +524,10 @@
 .order-detail-modal__sum-row--total span:last-child {
   color: #cd0000;
   font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 620px) {
+  .order-detail-modal__post-actions-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }

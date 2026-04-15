@@ -32,6 +32,18 @@
   border-color: rgba(245, 158, 11, 0.4);
 }
 
+.order-status-badge--delivered {
+  background: #eef2ff;
+  color: #3730a3;
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+.order-status-badge--received {
+  background: #ecfeff;
+  color: #155e75;
+  border-color: rgba(6, 182, 212, 0.35);
+}
+
 .order-status-badge--completed {
   background: #ecfdf5;
   color: #065f46;

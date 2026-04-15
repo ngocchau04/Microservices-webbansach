@@ -35,12 +35,16 @@ jest.mock("../src/services/supportHandoffService", () => ({
 }));
 
 const chatService = require("../src/services/chatService");
+const { createOrOpenSupportHandoff } = require("../src/services/supportHandoffService");
 
 describe("chat handoff", () => {
   test("returns handoff payload when explicit human support intent is detected", async () => {
+    createOrOpenSupportHandoff.mockClear();
     const result = await chatService.chat({
       message: "toi can nhan vien ho tro",
       context: { userId: "u1", userEmail: "u1@example.com", sessionId: "sess1" },
+      actor: { userId: "u1", email: "u1@example.com", tenantId: "tenant_a" },
+      tenantId: "tenant_a",
       config: { supportServiceUrl: "http://localhost:4007", supportInternalApiKey: "key" },
     });
 
@@ -48,6 +52,9 @@ describe("chat handoff", () => {
     expect(result.data.handoff.mode).toBe("human");
     expect(result.data.handoff.conversationId).toBe("conv_1");
     expect(result.data.mainAnswer).toContain("nhân viên hỗ trợ");
+    expect(createOrOpenSupportHandoff).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: "tenant_a" })
+    );
   });
 
   test("asks login before handoff if userId is missing", async () => {

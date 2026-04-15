@@ -20,6 +20,8 @@ function AdminOrder() {
     cxn: "pending",
     cvc: "confirmed",
     dvc: "shipping",
+    dgh: "delivered",
+    dnh: "received",
     ht: "completed",
     yc: "return_requested",
     xl: RETURN_PIPELINE,
@@ -104,6 +106,8 @@ function AdminOrder() {
       "Ðon h?y": "cancelled",
       "Đang chờ vận chuyển": "confirmed",
       "Đang vận chuyển": "shipping",
+      "Đã giao hàng": "delivered",
+      "Đã nhận hàng": "received",
       "Hoàn tất": "completed",
       "Đơn hoàn": "returned",
       "Đơn hủy": "cancelled",
@@ -119,6 +123,8 @@ function AdminOrder() {
       "Cho xac nhan": "pending",
       "Da xac nhan": "confirmed",
       "Dang van chuyen": "shipping",
+      "Da giao hang": "delivered",
+      "Da nhan hang": "received",
       "Hoan tat": "completed",
       "Don hoan": "returned",
       "Don huy": "cancelled",
@@ -130,6 +136,8 @@ function AdminOrder() {
       "pending",
       "confirmed",
       "shipping",
+      "delivered",
+      "received",
       "completed",
       "cancelled",
       "return_requested",
@@ -234,8 +242,23 @@ function AdminOrder() {
             )}
             {selectedStatus === "shipping" && (
               <div className="cnbton">
-                <button onClick={() => handleChangeStatus("completed")}>Xác nhận hoàn tất</button>
+                <button onClick={() => handleChangeStatus("delivered")}>Xác nhận đã giao hàng</button>
               </div>
+            )}
+            {selectedStatus === "delivered" && (
+              <p style={{ marginTop: 10, color: "#374151", fontSize: "0.92rem" }}>
+                Đơn đang chờ khách xác nhận đã nhận hàng.
+              </p>
+            )}
+            {selectedStatus === "received" && (
+              <p style={{ marginTop: 10, color: "#374151", fontSize: "0.92rem" }}>
+                Khách đã xác nhận nhận hàng. Chờ đánh giá hoặc yêu cầu hoàn trả.
+              </p>
+            )}
+            {selectedStatus === "completed" && (
+              <p style={{ marginTop: 10, color: "#166534", fontSize: "0.92rem", fontWeight: 600 }}>
+                Đơn hàng đã hoàn tất. Admin chỉ có thể xem thông tin, không thể đổi trạng thái.
+              </p>
             )}
             {selectedStatus === "return_requested" && (
               <div className="cnbton">
@@ -319,6 +342,20 @@ function AdminOrder() {
                 onClick={() => setTab("ht")}
               >
                 {getOrderStatusLabel(statusByTab.ht)}
+              </button>
+              <button
+                type="button"
+                className={`dhbutton${tab === "dgh" ? " dhbutton--active" : ""}`}
+                onClick={() => setTab("dgh")}
+              >
+                {getOrderStatusLabel(statusByTab.dgh)}
+              </button>
+              <button
+                type="button"
+                className={`dhbutton${tab === "dnh" ? " dhbutton--active" : ""}`}
+                onClick={() => setTab("dnh")}
+              >
+                {getOrderStatusLabel(statusByTab.dnh)}
               </button>
               <button
                 type="button"

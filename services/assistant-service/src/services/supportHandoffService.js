@@ -19,6 +19,7 @@ const createOrOpenSupportHandoff = async ({
   message = "",
   analysis = {},
   intentInfo = {},
+  tenantId = "public",
 }) => {
   if (!config.supportServiceUrl || !config.supportInternalApiKey) {
     return {
@@ -30,6 +31,7 @@ const createOrOpenSupportHandoff = async ({
   }
 
   const payload = {
+    tenantId: String(tenantId || "").trim(),
     userId: String(context.userId || "").trim(),
     userEmail: String(context.userEmail || "").trim(),
     sessionId: String(context.sessionId || "").trim(),
@@ -45,6 +47,7 @@ const createOrOpenSupportHandoff = async ({
       headers: {
         "content-type": "application/json",
         "x-internal-api-key": config.supportInternalApiKey,
+        "x-tenant-id": String(tenantId || "").trim(),
       },
       body: JSON.stringify(payload),
     });

@@ -20,6 +20,7 @@ const normalizeProductPayload = (payload = {}) => {
     "rating",
     "reviewsCount",
     "soldCount",
+    "stock",
     "publicationYear",
     "pages",
   ];
@@ -40,8 +41,9 @@ const normalizeProductPayload = (payload = {}) => {
   return next;
 };
 
-const listProducts = async ({ query = {} }) => {
+const listProducts = async ({ query = {}, tenantId = "public" }) => {
   const filter = buildProductFilter(query);
+  filter.tenantId = tenantId;
   const { page, limit, skip } = parsePagination(query);
   const sort = parseSort(query);
 

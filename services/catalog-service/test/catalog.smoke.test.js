@@ -5,6 +5,8 @@ const request = require("supertest");
 process.env.JWT_SECRET = "catalog_test_secret";
 process.env.MONGO_URI = "mongodb://127.0.0.1:27017";
 process.env.CATALOG_DB_NAME = "book_catalog_test";
+process.env.PUBLIC_TENANT_ID = "public";
+process.env.CATALOG_INTERNAL_API_KEY = "catalog_internal_test_key";
 
 const products = [];
 const reviews = [];
@@ -220,6 +222,10 @@ const mockProductModel = {
 
 const mockReviewModel = {
   find: jest.fn((query = {}) => createFindQuery(reviews, query, attachReviewDocMethods)),
+  findOne: jest.fn(async (query = {}) => {
+    const found = reviews.find((item) => matchesQuery(item, query));
+    return found ? attachReviewDocMethods(found) : null;
+  }),
 
   findById: jest.fn(async (id) => {
     const found = reviews.find((item) => toStringValue(item._id) === toStringValue(id));
@@ -242,6 +248,18 @@ const mockReviewModel = {
 
 jest.mock("../src/models/Product", () => mockProductModel);
 jest.mock("../src/models/Review", () => mockReviewModel);
+jest.mock("../src/services/checkoutClient", () => ({
+  checkReviewEligibility: jest.fn(async () => ({
+    data: {
+      eligible: true,
+      orderId: "order_1",
+      message: "Đủ điều kiện đánh giá.",
+    },
+  })),
+  completeOrderAfterReview: jest.fn(async () => ({
+    data: { item: { _id: "order_1", orderStatus: "completed" } },
+  })),
+}));
 
 const { createApp } = require("../src/index");
 
@@ -249,7 +267,17 @@ describe("catalog-service smoke flow", () => {
   const app = createApp();
 
   const adminToken = jwt.sign(
-    { userId: "admin_1", role: "admin", email: "admin@example.com" },
+    { userId: "admin_1", role: "admin", email: "admin@example.com", tenantId: "public" },
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" }
+  );
+  const userToken = jwt.sign(
+    { userId: "user_1", role: "user", email: "user@example.com", tenantId: "public" },
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" }
+  );
+  const tenantAToken = jwt.sign(
+    { userId: "tenant_a_user", role: "user", email: "ta@example.com", tenantId: "tenant_a" },
     process.env.JWT_SECRET,
     { expiresIn: "1h" }
   );
@@ -262,6 +290,7 @@ describe("catalog-service smoke flow", () => {
     products.push(
       attachProductDocMethods({
         _id: new mongoose.Types.ObjectId().toString(),
+        tenantId: "public",
         imgSrc: "https://example.com/book1.jpg",
         title: "Node in Action",
         author: "Alice",
@@ -276,6 +305,7 @@ describe("catalog-service smoke flow", () => {
       }),
       attachProductDocMethods({
         _id: new mongoose.Types.ObjectId().toString(),
+        tenantId: "public",
         imgSrc: "https://example.com/book2.jpg",
         title: "React Guide",
         author: "Bob",
@@ -313,11 +343,53 @@ describe("catalog-service smoke flow", () => {
     expect(searchRes.body.data.items[0].author).toBe("Alice");
   });
 
+  test("rejects tenant header mismatch against JWT claim", async () => {
+    await request(app)
+      .get("/products")
+      .set("Authorization", `Bearer ${tenantAToken}`)
+      .set("x-tenant-id", "public")
+      .expect(403);
+  });
+
+  test("allows internal tenant-scoped product list for assistant reindex", async () => {
+    products.push(
+      attachProductDocMethods({
+        _id: new mongoose.Types.ObjectId().toString(),
+        tenantId: "tenant_a",
+        imgSrc: "https://example.com/tenant-a.jpg",
+        title: "Tenant A Book",
+        author: "Tenant A",
+        price: 111000,
+        type: "K",
+      })
+    );
+
+    const response = await request(app)
+      .get("/products")
+      .set("x-internal-api-key", process.env.CATALOG_INTERNAL_API_KEY)
+      .set("x-tenant-id", "tenant_a")
+      .query({ page: 1, limit: 100 })
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.items.length).toBe(1);
+    expect(response.body.data.items[0].tenantId).toBe("tenant_a");
+  });
+
+  test("rejects tenant-scoped internal list when internal key is invalid", async () => {
+    await request(app)
+      .get("/products")
+      .set("x-internal-api-key", "wrong_key")
+      .set("x-tenant-id", "tenant_a")
+      .expect(401);
+  });
+
   test("review flow works", async () => {
     const productId = products[0]._id;
 
     const createReviewRes = await request(app)
       .post(`/products/${productId}/reviews`)
+      .set("Authorization", `Bearer ${userToken}`)
       .send({ content: "Great book", stars: 5 })
       .expect(201);
 

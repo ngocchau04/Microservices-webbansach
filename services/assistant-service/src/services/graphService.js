@@ -1,5 +1,6 @@
 const { CorpusDocument } = require("../models/CorpusDocument");
 const { normalize, rankCatalogHybrid, mergeByRefId } = require("./retrievalService");
+const { normalizeTenantId } = require("./tenantContextService");
 
 /** Explicit lightweight property-graph vocabulary (Mongo-backed metadata, no graph DB). */
 const ENTITY_TYPES = {
@@ -42,11 +43,16 @@ const relationTargets = (doc, kind, targetType = null) =>
     return r.targetType === targetType;
   });
 
+const resolveTenantId = (tenantId) => normalizeTenantId(tenantId, "public");
+
 /**
  * Path 1: book --authored_by--> author --(inverse query)--> other books
  * Returns docs + explicit path description for explanations / graphReasoningInfo.
  */
-const traverseSameAuthorFromBook = async (focusDoc, { excludeRefId, limit = 4 } = {}) => {
+const traverseSameAuthorFromBook = async (
+  focusDoc,
+  { tenantId = "public", excludeRefId, limit = 4 } = {}
+) => {
   const g = getGraph(focusDoc);
   const rel = relationTargets(focusDoc, RELATION_KINDS.AUTHORED_BY, ENTITY_TYPES.AUTHOR)[0];
   const authorKey = rel?.targetId || rel?.target || g.authorKey;
@@ -58,7 +64,7 @@ const traverseSameAuthorFromBook = async (focusDoc, { excludeRefId, limit = 4 } 
       steps: [],
     };
   }
-  const docs = await findSameAuthor(authorKey, { excludeRefId, limit });
+  const docs = await findSameAuthor(authorKey, { tenantId, excludeRefId, limit });
   return {
     docs,
     pathDescription: `book:${focusDoc.refId} → authored_by → author:${authorKey} → (cùng authorKey trong catalog)`,
@@ -73,7 +79,10 @@ const traverseSameAuthorFromBook = async (focusDoc, { excludeRefId, limit = 4 } 
 /**
  * Path 2: book --belongs_to--> category --(inverse query)--> other books
  */
-const traverseSameCategoryFromBook = async (focusDoc, { excludeRefId, limit = 4 } = {}) => {
+const traverseSameCategoryFromBook = async (
+  focusDoc,
+  { tenantId = "public", excludeRefId, limit = 4 } = {}
+) => {
   const g = getGraph(focusDoc);
   const rel = relationTargets(focusDoc, RELATION_KINDS.BELONGS_TO, ENTITY_TYPES.CATEGORY)[0];
   const categoryKey = rel?.targetId || rel?.target || g.categoryKey;
@@ -84,7 +93,7 @@ const traverseSameCategoryFromBook = async (focusDoc, { excludeRefId, limit = 4 
       steps: [],
     };
   }
-  const docs = await findSameCategory(categoryKey, { excludeRefId, limit });
+  const docs = await findSameCategory(categoryKey, { tenantId, excludeRefId, limit });
   return {
     docs,
     pathDescription: `book:${focusDoc.refId} → belongs_to → category:${categoryKey} → (cùng categoryKey trong catalog)`,
@@ -99,7 +108,7 @@ const traverseSameCategoryFromBook = async (focusDoc, { excludeRefId, limit = 4 
 /**
  * Cross-type: book --related_to--> faq_topic (policy / FAQ), then load corpus node by refId.
  */
-const traverseBookToFaqTopic = async (focusDoc, faqRefId) => {
+const traverseBookToFaqTopic = async (focusDoc, faqRefId, tenantId = "public") => {
   if (!focusDoc || !faqRefId) {
     return { doc: null, steps: [] };
   }
@@ -112,7 +121,12 @@ const traverseBookToFaqTopic = async (focusDoc, faqRefId) => {
   if (!targets.length) {
     return { doc: null, steps: [] };
   }
-  const doc = await CorpusDocument.findOne({ sourceType: "faq", refId: String(faqRefId) }).lean();
+  const scopedTenantId = resolveTenantId(tenantId);
+  const doc = await CorpusDocument.findOne({
+    tenantId: scopedTenantId,
+    sourceType: "faq",
+    refId: String(faqRefId),
+  }).lean();
   return {
     doc,
     steps: [
@@ -126,11 +140,13 @@ const traverseBookToFaqTopic = async (focusDoc, faqRefId) => {
   };
 };
 
-const findSameAuthor = async (authorKey, { excludeRefId, limit = 4 } = {}) => {
+const findSameAuthor = async (authorKey, { tenantId = "public", excludeRefId, limit = 4 } = {}) => {
   if (!authorKey) {
     return [];
   }
+  const scopedTenantId = resolveTenantId(tenantId);
   const q = {
+    tenantId: scopedTenantId,
     sourceType: "catalog",
     "metadata.graph.authorKey": authorKey,
   };
@@ -144,11 +160,16 @@ const findSameAuthor = async (authorKey, { excludeRefId, limit = 4 } = {}) => {
   return docs.slice(0, limit);
 };
 
-const findSameCategory = async (categoryKey, { excludeRefId, limit = 4 } = {}) => {
+const findSameCategory = async (
+  categoryKey,
+  { tenantId = "public", excludeRefId, limit = 4 } = {}
+) => {
   if (!categoryKey) {
     return [];
   }
+  const scopedTenantId = resolveTenantId(tenantId);
   const q = {
+    tenantId: scopedTenantId,
     sourceType: "catalog",
     "metadata.graph.categoryKey": categoryKey,
   };
@@ -162,7 +183,11 @@ const findSameCategory = async (categoryKey, { excludeRefId, limit = 4 } = {}) =
   return docs.slice(0, limit);
 };
 
-const findCheaperInCategory = async (categoryKey, referencePrice, { excludeRefId, limit = 4 } = {}) => {
+const findCheaperInCategory = async (
+  categoryKey,
+  referencePrice,
+  { tenantId = "public", excludeRefId, limit = 4 } = {}
+) => {
   if (!categoryKey || referencePrice === undefined || referencePrice === null) {
     return [];
   }
@@ -170,7 +195,9 @@ const findCheaperInCategory = async (categoryKey, referencePrice, { excludeRefId
   if (!Number.isFinite(rp)) {
     return [];
   }
+  const scopedTenantId = resolveTenantId(tenantId);
   const q = {
+    tenantId: scopedTenantId,
     sourceType: "catalog",
     "metadata.graph.categoryKey": categoryKey,
     "metadata.price": { $lt: rp },
@@ -186,12 +213,19 @@ const findCheaperInCategory = async (categoryKey, referencePrice, { excludeRefId
 };
 
 /** Deterministic "recommended_next": inferred — top sold in same category excluding focus. */
-const inferRecommendedNext = async (focusDoc, { excludeRefId, limit = 3 } = {}) => {
+const inferRecommendedNext = async (
+  focusDoc,
+  { tenantId = "public", excludeRefId, limit = 3 } = {}
+) => {
   const ck = getGraph(focusDoc).categoryKey;
   if (!ck) {
     return { docs: [], pathDescription: "(không có thể loại để suy luận recommended_next)" };
   }
-  const docs = await findSameCategory(ck, { excludeRefId: excludeRefId || focusDoc?.refId, limit: limit + 2 });
+  const docs = await findSameCategory(ck, {
+    tenantId,
+    excludeRefId: excludeRefId || focusDoc?.refId,
+    limit: limit + 2,
+  });
   return {
     docs: docs.slice(0, limit),
     pathDescription: `book → belongs_to → category:${ck} → (sắp xếp soldCount, gợi ý tiếp theo trong nhóm)`,
@@ -199,11 +233,15 @@ const inferRecommendedNext = async (focusDoc, { excludeRefId, limit = 3 } = {}) 
   };
 };
 
-const findCatalogByProductId = async (refId) => {
+const findCatalogByProductId = async (refId, tenantId = "public") => {
   if (!refId) {
     return null;
   }
-  return CorpusDocument.findOne({ sourceType: "catalog", refId: String(refId) }).lean();
+  return CorpusDocument.findOne({
+    tenantId: resolveTenantId(tenantId),
+    sourceType: "catalog",
+    refId: String(refId),
+  }).lean();
 };
 
 const explainMatch = (userMessage, doc) => {

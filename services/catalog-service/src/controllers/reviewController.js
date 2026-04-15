@@ -19,6 +19,8 @@ const createReview = async (req, res) => {
     productId: req.params.id,
     payload: req.body,
     actor: req.user,
+    authHeader: req.headers.authorization || "",
+    config: req.app.locals.config,
   });
   return sendServiceResult(res, result);
 };
@@ -55,6 +57,8 @@ const createFeedbackLegacy = async (req, res) => {
     productId: req.params.bookId,
     payload: req.body,
     actor: req.user,
+    authHeader: req.headers.authorization || "",
+    config: req.app.locals.config,
   });
 
   if (!result.ok) {

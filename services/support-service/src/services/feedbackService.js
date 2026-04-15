@@ -1,6 +1,7 @@
 const Feedback = require("../models/Feedback");
 const { validateCreateFeedbackInput, validateStatus } = require("../utils/validators");
 const { sendSupportAckEmail } = require("./notificationClient");
+const { normalizeTenantId } = require("../utils/tenant");
 
 const mapLegacyFeedback = (feedback) => ({
   _id: feedback._id,
@@ -29,6 +30,7 @@ const mapConversation = (feedback) => ({
     feedback.messages && feedback.messages.length ? feedback.messages[feedback.messages.length - 1] : null,
   messages: feedback.messages || [],
   metadata: feedback.metadata || {},
+  tenantId: feedback.tenantId || "public",
   createdAt: feedback.createdAt,
   updatedAt: feedback.updatedAt,
 });
@@ -43,7 +45,8 @@ const normalizeHandoffStateByStatus = (status) => {
   return "waiting_human";
 };
 
-const createFeedback = async ({ user, payload, requestMeta, config }) => {
+const createFeedback = async ({ user, payload, requestMeta, config, tenantId = "public" }) => {
+  const scopedTenantId = normalizeTenantId(tenantId, "public");
   const validationError = validateCreateFeedbackInput(payload);
   if (validationError) {
     return {
@@ -55,6 +58,7 @@ const createFeedback = async ({ user, payload, requestMeta, config }) => {
   }
 
   const feedback = await Feedback.create({
+    tenantId: scopedTenantId,
     userId: String(user.userId),
     userEmail: String(user.email || payload.email || "").trim(),
     subject: String(payload.subject || "").trim(),
@@ -98,7 +102,11 @@ const createFeedback = async ({ user, payload, requestMeta, config }) => {
   };
 };
 
-const createOrOpenAssistantHandoff = async ({ payload = {} }) => {
+const createOrOpenAssistantHandoff = async ({ payload = {}, tenantId = "public" }) => {
+  const scopedTenantId = normalizeTenantId(
+    tenantId || payload.tenantId,
+    "public"
+  );
   const userId = String(payload.userId || "").trim();
   const userEmail = String(payload.userEmail || "").trim();
   const sessionId = String(payload.sessionId || "").trim();
@@ -126,6 +134,7 @@ const createOrOpenAssistantHandoff = async ({ payload = {} }) => {
   }
 
   const existing = await Feedback.findOne({
+    tenantId: scopedTenantId,
     userId,
     channel: "assistant_handoff",
     status: { $in: ["open", "in_progress"] },
@@ -181,6 +190,7 @@ const createOrOpenAssistantHandoff = async ({ payload = {} }) => {
   }
 
   const conversation = await Feedback.create({
+    tenantId: scopedTenantId,
     userId,
     userEmail: userEmail || "unknown@bookie.local",
     subject: issueSummary,
@@ -229,8 +239,11 @@ const createOrOpenAssistantHandoff = async ({ payload = {} }) => {
   };
 };
 
-const listMyFeedback = async ({ userId }) => {
-  const items = await Feedback.find({ userId: String(userId) }).sort({ createdAt: -1 });
+const listMyFeedback = async ({ userId, tenantId = "public" }) => {
+  const scopedTenantId = normalizeTenantId(tenantId, "public");
+  const items = await Feedback.find({ tenantId: scopedTenantId, userId: String(userId) }).sort({
+    createdAt: -1,
+  });
 
   return {
     ok: true,
@@ -244,8 +257,10 @@ const listMyFeedback = async ({ userId }) => {
   };
 };
 
-const listMyConversations = async ({ userId }) => {
+const listMyConversations = async ({ userId, tenantId = "public" }) => {
+  const scopedTenantId = normalizeTenantId(tenantId, "public");
   const items = await Feedback.find({
+    tenantId: scopedTenantId,
     userId: String(userId),
     channel: "assistant_handoff",
   }).sort({ updatedAt: -1 });
@@ -260,8 +275,9 @@ const listMyConversations = async ({ userId }) => {
   };
 };
 
-const listAdminFeedback = async () => {
-  const items = await Feedback.find().sort({ createdAt: -1 });
+const listAdminFeedback = async ({ tenantId = "public" } = {}) => {
+  const scopedTenantId = normalizeTenantId(tenantId, "public");
+  const items = await Feedback.find({ tenantId: scopedTenantId }).sort({ createdAt: -1 });
 
   return {
     ok: true,
@@ -276,7 +292,8 @@ const listAdminFeedback = async () => {
   };
 };
 
-const addConversationMessage = async ({ feedbackId, sender, content, actorUserId }) => {
+const addConversationMessage = async ({ feedbackId, sender, content, actorUserId, tenantId = "public" }) => {
+  const scopedTenantId = normalizeTenantId(tenantId, "public");
   const msg = String(content || "").trim();
   if (!msg) {
     return {
@@ -301,6 +318,14 @@ const addConversationMessage = async ({ feedbackId, sender, content, actorUserId
       statusCode: 400,
       message: "Conversation is not assistant handoff",
       code: "SUPPORT_CONVERSATION_INVALID_CHANNEL",
+    };
+  }
+  if (String(feedback.tenantId || "public") !== scopedTenantId) {
+    return {
+      ok: false,
+      statusCode: 403,
+      message: "Forbidden",
+      code: "SUPPORT_FORBIDDEN",
     };
   }
   if (sender === "user" && String(feedback.userId) !== String(actorUserId || "")) {
@@ -336,7 +361,8 @@ const addConversationMessage = async ({ feedbackId, sender, content, actorUserId
   };
 };
 
-const updateFeedbackStatus = async ({ feedbackId, status, adminMessage }) => {
+const updateFeedbackStatus = async ({ feedbackId, status, adminMessage, tenantId = "public" }) => {
+  const scopedTenantId = normalizeTenantId(tenantId, "public");
   const nextStatus = String(status || "").trim();
   if (!validateStatus(nextStatus)) {
     return {
@@ -354,6 +380,14 @@ const updateFeedbackStatus = async ({ feedbackId, status, adminMessage }) => {
       statusCode: 404,
       message: "Feedback not found",
       code: "SUPPORT_FEEDBACK_NOT_FOUND",
+    };
+  }
+  if (String(feedback.tenantId || "public") !== scopedTenantId) {
+    return {
+      ok: false,
+      statusCode: 403,
+      message: "Forbidden",
+      code: "SUPPORT_FORBIDDEN",
     };
   }
 

@@ -10,6 +10,7 @@ const {
   notFoundHandler,
   errorHandler,
 } = require("./middleware/httpMiddleware");
+const { tenantContextMiddleware } = require("./middleware/tenantContextMiddleware");
 
 const config = getEnvConfig();
 
@@ -22,6 +23,7 @@ const createApp = () => {
   app.use(cors());
   app.use(express.json({ limit: "1mb" }));
   app.use(requestLogger);
+  app.use(tenantContextMiddleware(config));
   app.use(createAssistantRoutes(config));
   app.use(notFoundHandler);
   app.use(errorHandler);
