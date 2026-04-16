@@ -7,6 +7,7 @@ import {
   removeCartItemByProduct,
   upsertCartItem,
 } from "../../api/checkoutApi";
+import ProductCardImage from "../../components/ProductCardImage";
 
 const normalizeCartItems = (payload) => {
   const rawItems =
@@ -236,7 +237,11 @@ function Cart() {
                           onChange={handleCheck}
                         />
                       </label>
-                      <img src={item.image} alt={item.title || "San pham"} className="cart-item-image" />
+                      <ProductCardImage
+                        src={item.image}
+                        alt={item.title || "San pham"}
+                        className="cart-item-image"
+                      />
                       <div className="cart-item-info">
                         <h3 className="cart-item-title">{item.title}</h3>
                         <p className="cart-item-price-line">Don gia: {formatPrice(item.price)}</p>

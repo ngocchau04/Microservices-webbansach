@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import "./BookDetail.css";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
@@ -7,10 +7,11 @@ import { useUser } from "../../context/UserContext";
 import {
   createProductReview,
   getProductById,
+  getProducts,
   getProductReviews,
   getSimilarProducts,
 } from "../../api/catalogApi";
-import { getReviewEligibility, upsertCartItem } from "../../api/checkoutApi";
+import { getCart, getReviewEligibility, upsertCartItem } from "../../api/checkoutApi";
 import { toggleFavorite } from "../../api/authApi";
 
 const BookDetail = () => {
@@ -56,14 +57,89 @@ const BookDetail = () => {
   }, [id]);
 
   useEffect(() => {
-    if (book && book.type) {
-      getSimilarProducts(book.type)
-        .then((response) => {
-          const data = response?.data || [];
-          setSimilarBooks(Array.isArray(data) ? data : []);
-        })
-        .catch((error) => console.error("Error fetching similar books:", error));
-    }
+    if (!book) return undefined;
+
+    let cancelled = false;
+    const currentId = String(book._id ?? book.id ?? "");
+    const targetLimit = 10;
+
+    const extractSimilar = (response) => {
+      const raw = response?.data;
+      if (Array.isArray(raw)) return raw;
+      if (raw && Array.isArray(raw.items)) return raw.items;
+      if (Array.isArray(raw?.data?.items)) return raw.data.items;
+      return [];
+    };
+
+    const extractProductList = (response) => {
+      const raw = response?.data;
+      if (Array.isArray(raw)) return raw;
+      const items = raw?.items ?? raw?.products ?? raw?.data?.items;
+      return Array.isArray(items) ? items : [];
+    };
+
+    const mergeRelated = (seen, merged, items) => {
+      if (!Array.isArray(items)) return;
+      for (const b of items) {
+        const bid = String(b?._id ?? b?.id ?? "");
+        if (!bid || seen.has(bid)) continue;
+        seen.add(bid);
+        merged.push(b);
+        if (merged.length >= targetLimit) break;
+      }
+    };
+
+    (async () => {
+      try {
+        const seen = new Set([currentId]);
+        const merged = [];
+
+        if (book.type) {
+          try {
+            const res = await getSimilarProducts(book.type);
+            if (cancelled) return;
+            mergeRelated(seen, merged, extractSimilar(res));
+          } catch (e) {
+            console.error("Error fetching related by type:", e);
+          }
+        }
+
+        if (merged.length < targetLimit && book.author?.trim()) {
+          try {
+            const res = await getProducts({
+              author: book.author.trim(),
+              limit: 32,
+              page: 1,
+            });
+            if (cancelled) return;
+            mergeRelated(seen, merged, extractProductList(res));
+          } catch (e) {
+            console.error("Error fetching related by author:", e);
+          }
+        }
+
+        if (merged.length < targetLimit) {
+          try {
+            const res = await getProducts({ limit: 32, page: 1 });
+            if (cancelled) return;
+            mergeRelated(seen, merged, extractProductList(res));
+          } catch (e) {
+            console.error("Error fetching related fallback list:", e);
+          }
+        }
+
+        if (!cancelled) {
+          setSimilarBooks(merged.slice(0, targetLimit));
+        }
+      } catch (error) {
+        console.error("Error loading related books:", error);
+        if (!cancelled) setSimilarBooks([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [book]);
 
   useEffect(() => {
@@ -157,20 +233,53 @@ const BookDetail = () => {
         alert("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.");
         return;
       }
-      const check = user.cart.find((item) => item.product === id);
-      if (check) {
-        alert("Sản phẩm đã có trong giỏ hàng.");
-        return;
+      const addQtyRaw = Number(quantity);
+      const addQty =
+        Number.isFinite(addQtyRaw) && addQtyRaw > 0 ? Math.floor(addQtyRaw) : 1;
+
+      let serverQty = 0;
+      try {
+        const cartPayload = await getCart();
+        const rawItems =
+          cartPayload?.cart?.items || cartPayload?.items || [];
+        const line = Array.isArray(rawItems)
+          ? rawItems.find((it) => {
+              const pid = it.productId ?? it.product?._id;
+              return String(pid) === String(id);
+            })
+          : null;
+        const q = Number(line?.quantity);
+        serverQty = Number.isFinite(q) && q > 0 ? q : 0;
+      } catch {
+        const existingCart = Array.isArray(user?.cart) ? user.cart : [];
+        const fallback = existingCart.find(
+          (item) => String(item.product) === String(id)
+        );
+        const fq = Number(fallback?.quantity);
+        serverQty = Number.isFinite(fq) && fq > 0 ? fq : 0;
       }
-      const response = await upsertCartItem({ productId: id, quantity: 1 });
+
+      const nextQty = serverQty + addQty;
+      await upsertCartItem({ productId: id, quantity: nextQty });
       alert("Thêm vào giỏ hàng thành công.");
-      setUser((prevUser) => ({
-        ...prevUser,
-        cart: [...prevUser.cart, { product: id }],
-      }));
-      console.log(response.data);
+      setUser((prevUser) => {
+        const cart = [...(prevUser?.cart || [])];
+        const idx = cart.findIndex(
+          (item) => String(item.product) === String(id)
+        );
+        const entry = { product: id, quantity: nextQty };
+        if (idx >= 0) {
+          cart[idx] = { ...cart[idx], ...entry };
+        } else {
+          cart.push(entry);
+        }
+        return { ...prevUser, cart };
+      });
     } catch (error) {
       console.error(error);
+      const msg =
+        error?.response?.data?.message || "Không thể cập nhật giỏ hàng.";
+      alert(msg);
     }
   };
 
@@ -334,32 +443,34 @@ const BookDetail = () => {
         <section className="similar-books-section book-related" aria-label="Sách liên quan">
           <div className="book-related__head">
             <h3 className="book-related__title">Sách liên quan</h3>
-            <p className="book-related__sub">Gợi ý cùng thể loại dành cho bạn</p>
+            <p className="book-related__sub">Ưu tiên cùng thể loại, cùng tác giả, sau đó là sách đang có tại cửa hàng</p>
           </div>
           <div className="similar-books-container book-related__track">
             {similarBooks.length > 0 ? (
-              similarBooks.map((similarBook) => (
-                <article
-                  key={similarBook._id}
-                  className="similar-book-card"
-                  onClick={() => navigate(`/book/${similarBook._id}`)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      navigate(`/book/${similarBook._id}`);
-                    }
-                  }}
-                >
-                  <div className="similar-book-card__cover">
-                    <img src={similarBook.imgSrc} alt="" />
-                  </div>
-                  <p className="similar-book-card__title">{similarBook.title}</p>
-                </article>
-              ))
+              similarBooks.map((similarBook) => {
+                const relatedId = similarBook._id ?? similarBook.id;
+                if (relatedId == null) return null;
+                const rid = String(relatedId);
+                return (
+                  <Link
+                    key={rid}
+                    to={`/book/${rid}`}
+                    className="similar-book-card"
+                  >
+                    <div className="similar-book-card__cover">
+                      <img src={similarBook.imgSrc} alt="" />
+                    </div>
+                    <p className="similar-book-card__title">{similarBook.title}</p>
+                  </Link>
+                );
+              })
             ) : (
-              <p className="book-related__empty">Không có sách liên quan.</p>
+              <div className="book-related__empty" role="status">
+                <p className="book-related__empty-title">Chưa có sách gợi ý</p>
+                <p className="book-related__empty-text">
+                  Hiện không còn đầu sách khác để gợi ý ngoài sản phẩm bạn đang xem.
+                </p>
+              </div>
             )}
           </div>
         </section>

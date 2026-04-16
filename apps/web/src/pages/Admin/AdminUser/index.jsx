@@ -285,7 +285,7 @@ function AdminUser() {
                         <td>{customer.name}</td>
                         <td>{customer.email}</td>
                         <td>{customer.sdt || "—"}</td>
-                        <td>
+                        <td className="admin-user__cell--status">
                           <span
                             className={`admin-user__status${
                               locked ? " admin-user__status--locked" : " admin-user__status--active"
@@ -294,7 +294,7 @@ function AdminUser() {
                             {statusLabel(customer)}
                           </span>
                         </td>
-                        <td>
+                        <td className="admin-user__cell--actions">
                           <div className="admin-user__row-actions">
                             <button type="button" className="admin-user__mini-btn" onClick={() => setKh(customer)}>
                               <FaEye />
@@ -328,7 +328,7 @@ function AdminUser() {
             </table>
           </div>
 
-          <div className="pagination">
+          <div className="pagination admin-user__pagination">
             <button className="arrow" onClick={handlePrevPage} disabled={safePage === 1}>
               <IoMdArrowDropleft style={{ marginBottom: "-3px" }} />
             </button>

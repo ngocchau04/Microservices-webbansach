@@ -7,7 +7,8 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test": "node ./node_modules/jest/bin/jest.js --runInBand",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "remove-debug-products": "node scripts/removeDebugProducts.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

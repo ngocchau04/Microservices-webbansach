@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const { getEnvConfig } = require("../src/config/env");
 const { connectDatabase } = require("../src/config/database");
 const Product = require("../src/models/Product");
+const { removeDebugProducts } = require("./debugProductCleanup");
 
 const seedProducts = [
   {
@@ -105,6 +106,11 @@ const run = async () => {
       { upsert: true }
     );
     console.log(`[catalog-seed] upserted ${item.title}`);
+  }
+
+  const removedDebug = await removeDebugProducts(Product);
+  if (removedDebug > 0) {
+    console.log(`[catalog-seed] removed ${removedDebug} debug/test product(s) not in the official dataset`);
   }
 
   const total = await Product.countDocuments({});

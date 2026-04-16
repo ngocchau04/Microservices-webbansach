@@ -12,7 +12,7 @@ function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
-  const [ totalCart, setTotalCart ] = useState(1);
+  const [totalCart, setTotalCart] = useState(0);
 
   const [isfixed, setIsFixed] = useState(false);
 
@@ -32,11 +32,16 @@ function Header() {
     };
   }, []);
 
-  
   useEffect(() => {
-    if (user && user.cart){
-      setTotalCart(user.cart.length);
+    if (!user || !Array.isArray(user.cart)) {
+      setTotalCart(0);
+      return;
     }
+    const total = user.cart.reduce((sum, item) => {
+      const q = Number(item?.quantity);
+      return sum + (Number.isFinite(q) && q > 0 ? q : 1);
+    }, 0);
+    setTotalCart(total);
   }, [user]);
 
   const handleInputChange = (e) => {
@@ -99,7 +104,11 @@ function Header() {
               className="navv2 gio_hang"
             >
               <FaShoppingCart />
-              <p className="total_cart">{totalCart}</p>
+              {totalCart > 0 ? (
+                <p className="total_cart">
+                  {totalCart > 99 ? "99+" : totalCart}
+                </p>
+              ) : null}
             </Link>
             <Link
               style={{ textDecoration: "none" }}

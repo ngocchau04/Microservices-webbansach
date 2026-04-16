@@ -1,4 +1,4 @@
-﻿const { errorResponse } = require("../utils/response");
+const { errorResponse } = require("../utils/response");
 
 const fetchWithTimeout = async (url, options = {}, timeoutMs = 8000) => {
   const controller = new AbortController();
@@ -44,7 +44,9 @@ const normalizeProduct = (payload) => {
     title: item.title || "",
     price: Number(item.price) || 0,
     image: item.imgSrc || item.image || "",
-    stockSnapshot: Number.isFinite(stock) && stock >= 0 ? stock : 999999,
+    // Legacy catalog records frequently carry default stock=0 while inventory
+    // is not explicitly managed; treat non-positive stock as "unspecified".
+    stockSnapshot: Number.isFinite(stock) && stock > 0 ? stock : 999999,
   };
 };
 

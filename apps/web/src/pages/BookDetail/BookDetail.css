@@ -482,11 +482,14 @@
 
 .similar-book-card {
   flex: 0 0 156px;
+  display: block;
   padding: 0;
   border: none;
   background: transparent;
   cursor: pointer;
   text-align: left;
+  text-decoration: none;
+  color: inherit;
   border-radius: var(--bd-radius-sm);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -534,13 +537,31 @@
 
 .book-related__empty {
   margin: 0;
-  padding: 24px 16px;
+  flex: 1 1 100%;
+  min-width: 0;
+  padding: 28px 20px;
   text-align: center;
-  font-size: 0.92rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 248, 248, 0.98) 100%);
+  border-radius: 14px;
+  border: 1px dashed rgba(196, 0, 0, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.book-related__empty-title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #333;
+}
+
+.book-related__empty-text {
+  margin: 0 auto;
+  max-width: 360px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  line-height: 1.55;
   color: #777;
-  background: rgba(0, 0, 0, 0.03);
-  border-radius: 12px;
-  border: 1px dashed rgba(0, 0, 0, 0.1);
 }
 
 /* ========== Reviews — premium e-commerce block ========== */

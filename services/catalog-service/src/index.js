@@ -10,6 +10,8 @@ const {
   notFoundHandler,
   errorHandler,
 } = require("./middleware/httpMiddleware");
+const Product = require("./models/Product");
+const { removeDebugProducts } = require("../scripts/debugProductCleanup");
 
 const config = getEnvConfig();
 const validateConfig = () => {
@@ -42,6 +44,13 @@ const app = createApp();
 
 const startServer = async () => {
   await connectDatabase({ mongoUri: config.mongoUri, dbName: config.dbName });
+
+  const removedDebug = await removeDebugProducts(Product);
+  if (removedDebug > 0) {
+    console.log(
+      `[catalog-service] removed ${removedDebug} debug catalog product(s) (titles: Debug Cart Stock / Debug Cart Stock 2)`
+    );
+  }
 
   return new Promise((resolve, reject) => {
     const server = app.listen(config.port, () => {

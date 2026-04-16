@@ -5,8 +5,9 @@ import { Link } from "react-router-dom";
 import ReactStars from "react-rating-stars-component";
 import { FaHeart, FaCartPlus } from "react-icons/fa";
 import { useUser } from "../../context/UserContext";
-import { removeCartItemByProduct, upsertCartItem } from "../../api/checkoutApi";
+import { getCart, upsertCartItem } from "../../api/checkoutApi";
 import { removeFavorite, toggleFavorite } from "../../api/authApi";
+import ProductCardImage from "../ProductCardImage";
 
 const CardItem = ({ book }) => {
   const { user, setUser } = useUser();
@@ -17,7 +18,9 @@ const CardItem = ({ book }) => {
   useEffect(() => {
     if (user && user.favorite && user.cart) {
       setIsFavourite(user.favorite.some((item) => item.product === book._id));
-      setIsCart(user.cart.some((item) => item.product === book._id));
+      setIsCart(
+        user.cart.some((item) => String(item.product) === String(book._id))
+      );
     }
   }, [user, book._id]);
 
@@ -99,42 +102,51 @@ const CardItem = ({ book }) => {
         alert("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.");
         return;
       }
-      const response = await upsertCartItem({ productId: _id, quantity: 1 });
-      setUser((prevUser) => ({
-        ...prevUser,
-        cart: [...(prevUser?.cart || []), { product: _id, quantity: 1 }],
-      }));
+
+      let serverQty = 0;
+      try {
+        const cartPayload = await getCart();
+        const rawItems = cartPayload?.cart?.items || cartPayload?.items || [];
+        const line = Array.isArray(rawItems)
+          ? rawItems.find((it) => {
+              const pid = it.productId ?? it.product?._id;
+              return String(pid) === String(_id);
+            })
+          : null;
+        const q = Number(line?.quantity);
+        serverQty = Number.isFinite(q) && q > 0 ? q : 0;
+      } catch {
+        const existingCart = Array.isArray(user?.cart) ? user.cart : [];
+        const fallback = existingCart.find(
+          (item) => String(item.product) === String(_id)
+        );
+        const fq = Number(fallback?.quantity);
+        serverQty = Number.isFinite(fq) && fq > 0 ? fq : 0;
+      }
+
+      const nextQty = serverQty + 1;
+      await upsertCartItem({ productId: _id, quantity: nextQty });
+      setUser((prevUser) => {
+        const cart = [...(prevUser?.cart || [])];
+        const idx = cart.findIndex(
+          (item) => String(item.product) === String(_id)
+        );
+        const entry = { product: _id, quantity: nextQty };
+        if (idx >= 0) {
+          cart[idx] = { ...cart[idx], ...entry };
+        } else {
+          cart.push(entry);
+        }
+        return { ...prevUser, cart };
+      });
 
       setIsCart(true);
-      console.log(response.data);
       alert("Thêm sản phẩm vào giỏ hàng thành công!");
     } catch (error) {
       console.error(error);
-    }
-  };
-
-  const handleRemoveCart = async () => {
-    try {
-      const jwt = localStorage.getItem("token");
-      if (!jwt) {
-        alert("Vui lòng đăng nhập để xóa sản phẩm khỏi giỏ hàng.");
-        return;
-      }
-      if (!window.confirm("Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?")) {
-        return;
-      }
-      const response = await removeCartItemByProduct(_id);
-
-      setUser((prevUser) => ({
-        ...prevUser,
-        cart: prevUser.cart.filter((item) => item.product !== _id),
-      }));
-
-      setIsCart(false);
-      console.log(response.data);
-      alert("Xóa sản phẩm khỏi giỏ hàng thành công!");
-    } catch (error) {
-      console.error(error);
+      const msg =
+        error?.response?.data?.message || "Không thể cập nhật giỏ hàng.";
+      alert(msg);
     }
   };
 
@@ -143,7 +155,7 @@ const CardItem = ({ book }) => {
       <div className="book-card">
         <div className="book-image">
           <Link to={`/book/${_id}`}>
-            <img src={imgSrc} alt={title} />
+            <ProductCardImage src={imgSrc} alt={title} />
           </Link>
         </div>
         <h2 className="book-title-item">
@@ -175,7 +187,7 @@ const CardItem = ({ book }) => {
           </div>
           <div
             className={isCart ? "book-cart red_hide" : "book-cart"}
-            onClick={isCart ? handleRemoveCart : handleAddToCart}
+            onClick={handleAddToCart}
           >
             <FaCartPlus />
           </div>
