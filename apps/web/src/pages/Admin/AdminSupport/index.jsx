@@ -467,36 +467,38 @@ function AdminSupport() {
         <div className="admin-support-inbox">
           <aside className="admin-support-list">
             <div className="admin-support-list__head">Hộp thư hỗ trợ</div>
-            {handoffItems.map((item) => {
-              const latest = Array.isArray(item.messages) && item.messages.length
-                ? item.messages[item.messages.length - 1]
-                : null;
-              const isActive = String(item._id) === String(selectedId);
-              return (
-                <button
-                  key={item._id}
-                  type="button"
-                  className={`admin-support-list-item${isActive ? " is-active" : ""}`}
-                  onClick={() => setSelectedId(String(item._id))}
-                >
-                  <div className="admin-support-list-item__top">
-                    <strong>{item.userEmail || item.userId || "Người dùng"}</strong>
-                    <span className={`support-state support-state--${item.handoffState || "waiting_human"}`}>
-                      {prettyState(item.handoffState)}
-                    </span>
-                  </div>
-                  <p className="admin-support-list-item__preview">
-                    {latest?.content || item.message || "Không có nội dung"}
-                  </p>
-                  <div className="admin-support-list-item__meta">
-                    <span>{new Date(item.updatedAt || item.createdAt).toLocaleString("vi-VN")}</span>
-                    {item.handoffState === "waiting_human" ? (
-                      <span className="pending-dot" aria-label="Cần phản hồi" />
-                    ) : null}
-                  </div>
-                </button>
-              );
-            })}
+            <div className="admin-support-list__scroll">
+              {handoffItems.map((item) => {
+                const latest = Array.isArray(item.messages) && item.messages.length
+                  ? item.messages[item.messages.length - 1]
+                  : null;
+                const isActive = String(item._id) === String(selectedId);
+                return (
+                  <button
+                    key={item._id}
+                    type="button"
+                    className={`admin-support-list-item${isActive ? " is-active" : ""}`}
+                    onClick={() => setSelectedId(String(item._id))}
+                  >
+                    <div className="admin-support-list-item__top">
+                      <strong>{item.userEmail || item.userId || "Người dùng"}</strong>
+                      <span className={`support-state support-state--${item.handoffState || "waiting_human"}`}>
+                        {prettyState(item.handoffState)}
+                      </span>
+                    </div>
+                    <p className="admin-support-list-item__preview">
+                      {latest?.content || item.message || "Không có nội dung"}
+                    </p>
+                    <div className="admin-support-list-item__meta">
+                      <span>{new Date(item.updatedAt || item.createdAt).toLocaleString("vi-VN")}</span>
+                      {item.handoffState === "waiting_human" ? (
+                        <span className="pending-dot" aria-label="Cần phản hồi" />
+                      ) : null}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </aside>
 
           <section className="admin-support-detail">
@@ -627,133 +629,135 @@ function AdminSupport() {
               </button>
             </div>
 
-            <section className="admin-support-copilot__panel">
-              <h4>
-                <FaReply aria-hidden />
-                Gợi ý trả lời nhanh
-              </h4>
-              <div className="admin-support-copilot__chips">
-                {quickReplySuggestions.map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    className="copilot-chip"
-                    onClick={() => setReplyText(suggestion)}
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className="admin-support-copilot__panel">
-              <h4>
-                <FaTags aria-hidden />
-                Đề xuất phân loại
-              </h4>
-              <div className="admin-support-copilot__tags admin-support-copilot__tags--actionable">
-                {supportTags.map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    className={`copilot-tag-btn${appliedCategory === tag ? " is-active" : ""}`}
-                    onClick={() => setAppliedCategory(tag)}
-                  >
-                    <span className="copilot-tag">{tag}</span>
-                    <span className="copilot-tag-btn__meta">Áp dụng</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className={`admin-support-copilot__panel escalation escalation--${escalationSuggestion.level}`}>
-              <h4>
-                <FaExclamationTriangle aria-hidden />
-                Đề xuất escalate
-              </h4>
-              <p className="escalation__title">{escalationSuggestion.title}</p>
-              <p className="escalation__detail">{escalationSuggestion.detail}</p>
-              <button
-                type="button"
-                className={`escalation-action${escalationFlag ? " is-active" : ""}`}
-                onClick={() => setEscalationFlag((v) => !v)}
-              >
-                {escalationFlag ? "Bỏ đánh dấu escalate" : "Đánh dấu cần escalate"}
-              </button>
-            </section>
-
-            <section className="admin-support-copilot__panel">
-              <h4>
-                <FaBoxes aria-hidden />
-                Cảnh báo tồn kho
-              </h4>
-              {inventoryLoading ? (
-                <p className="admin-support-copilot__muted">Đang tải dữ liệu tồn kho...</p>
-              ) : (
-                <>
-                  <div className="stock-summary">
-                    <div className="stock-summary__item stock-summary__item--out">
-                      <span>Hết hàng</span>
-                      <strong>{inventorySummary.outOfStock}</strong>
-                    </div>
-                    <div className="stock-summary__item stock-summary__item--low">
-                      <span>Sắp hết</span>
-                      <strong>{inventorySummary.lowStock}</strong>
-                    </div>
-                    <div className="stock-summary__item">
-                      <span>Bình thường</span>
-                      <strong>{inventorySummary.normalStock}</strong>
-                    </div>
-                  </div>
-                  {inventorySummary.alerts.length ? (
-                    <ul className="stock-alert-list">
-                      {inventorySummary.alerts.map((item) => (
-                        <li key={`${item.title}-${item.stock}`}>
-                          <span>{item.title}</span>
-                          <strong className={item.status === "out" ? "is-out" : "is-low"}>
-                            {item.status === "out" ? "Hết hàng" : `Còn ${item.stock}`}
-                          </strong>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="admin-support-copilot__muted">
-                      Không có cảnh báo tồn kho trong thời điểm hiện tại.
-                    </p>
-                  )}
-                </>
-              )}
-            </section>
-
-            <section className="admin-support-copilot__panel">
-              <h4>
-                <FaRobot aria-hidden />
-                Kết quả copilot
-              </h4>
-              {copilotLoading ? (
-                <p className="admin-support-copilot__muted">Trợ lý đang phân tích hội thoại...</p>
-              ) : copilotError ? (
-                <p className="admin-support-copilot__muted">{copilotError}</p>
-              ) : (
-                <div className="copilot-sections">
-                  {Object.entries(copilotSections).map(([title, content]) => (
-                    <article key={title} className="copilot-section">
-                      <h5>{title}</h5>
-                      <p>{content}</p>
-                      {title === "Câu trả lời gợi ý" ? (
-                        <button
-                          type="button"
-                          className="copilot-inline-action"
-                          onClick={() => setReplyText(content.replace(/^-+\s*/g, "").trim())}
-                        >
-                          Chèn vào khung trả lời
-                        </button>
-                      ) : null}
-                    </article>
+            <div className="admin-support-copilot__scroll">
+              <section className="admin-support-copilot__panel">
+                <h4>
+                  <FaReply aria-hidden />
+                  Gợi ý trả lời nhanh
+                </h4>
+                <div className="admin-support-copilot__chips">
+                  {quickReplySuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      className="copilot-chip"
+                      onClick={() => setReplyText(suggestion)}
+                    >
+                      {suggestion}
+                    </button>
                   ))}
                 </div>
-              )}
-            </section>
+              </section>
+
+              <section className="admin-support-copilot__panel">
+                <h4>
+                  <FaTags aria-hidden />
+                  Đề xuất phân loại
+                </h4>
+                <div className="admin-support-copilot__tags admin-support-copilot__tags--actionable">
+                  {supportTags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      className={`copilot-tag-btn${appliedCategory === tag ? " is-active" : ""}`}
+                      onClick={() => setAppliedCategory(tag)}
+                    >
+                      <span className="copilot-tag">{tag}</span>
+                      <span className="copilot-tag-btn__meta">Áp dụng</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className={`admin-support-copilot__panel escalation escalation--${escalationSuggestion.level}`}>
+                <h4>
+                  <FaExclamationTriangle aria-hidden />
+                  Đề xuất escalate
+                </h4>
+                <p className="escalation__title">{escalationSuggestion.title}</p>
+                <p className="escalation__detail">{escalationSuggestion.detail}</p>
+                <button
+                  type="button"
+                  className={`escalation-action${escalationFlag ? " is-active" : ""}`}
+                  onClick={() => setEscalationFlag((v) => !v)}
+                >
+                  {escalationFlag ? "Bỏ đánh dấu escalate" : "Đánh dấu cần escalate"}
+                </button>
+              </section>
+
+              <section className="admin-support-copilot__panel">
+                <h4>
+                  <FaBoxes aria-hidden />
+                  Cảnh báo tồn kho
+                </h4>
+                {inventoryLoading ? (
+                  <p className="admin-support-copilot__muted">Đang tải dữ liệu tồn kho...</p>
+                ) : (
+                  <>
+                    <div className="stock-summary">
+                      <div className="stock-summary__item stock-summary__item--out">
+                        <span>Hết hàng</span>
+                        <strong>{inventorySummary.outOfStock}</strong>
+                      </div>
+                      <div className="stock-summary__item stock-summary__item--low">
+                        <span>Sắp hết</span>
+                        <strong>{inventorySummary.lowStock}</strong>
+                      </div>
+                      <div className="stock-summary__item">
+                        <span>Bình thường</span>
+                        <strong>{inventorySummary.normalStock}</strong>
+                      </div>
+                    </div>
+                    {inventorySummary.alerts.length ? (
+                      <ul className="stock-alert-list">
+                        {inventorySummary.alerts.map((item) => (
+                          <li key={`${item.title}-${item.stock}`}>
+                            <span>{item.title}</span>
+                            <strong className={item.status === "out" ? "is-out" : "is-low"}>
+                              {item.status === "out" ? "Hết hàng" : `Còn ${item.stock}`}
+                            </strong>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="admin-support-copilot__muted">
+                        Không có cảnh báo tồn kho trong thời điểm hiện tại.
+                      </p>
+                    )}
+                  </>
+                )}
+              </section>
+
+              <section className="admin-support-copilot__panel">
+                <h4>
+                  <FaRobot aria-hidden />
+                  Kết quả copilot
+                </h4>
+                {copilotLoading ? (
+                  <p className="admin-support-copilot__muted">Trợ lý đang phân tích hội thoại...</p>
+                ) : copilotError ? (
+                  <p className="admin-support-copilot__muted">{copilotError}</p>
+                ) : (
+                  <div className="copilot-sections">
+                    {Object.entries(copilotSections).map(([title, content]) => (
+                      <article key={title} className="copilot-section">
+                        <h5>{title}</h5>
+                        <p>{content}</p>
+                        {title === "Câu trả lời gợi ý" ? (
+                          <button
+                            type="button"
+                            className="copilot-inline-action"
+                            onClick={() => setReplyText(content.replace(/^-+\s*/g, "").trim())}
+                          >
+                            Chèn vào khung trả lời
+                          </button>
+                        ) : null}
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
           </aside>
         </div>
       )}
