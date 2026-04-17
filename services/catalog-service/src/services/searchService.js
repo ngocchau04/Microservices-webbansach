@@ -1,9 +1,13 @@
 const Product = require("../models/Product");
 const { parsePagination, parseSort, buildProductFilter } = require("../utils/validators");
 
+const visibleOnly = () => ({
+  $or: [{ isHidden: false }, { isHidden: { $exists: false } }],
+});
+
 const searchByMode = async ({ mode }) => {
   if (mode === "top24") {
-    const items = await Product.find().limit(24);
+    const items = await Product.find(visibleOnly()).limit(24);
     return {
       ok: true,
       statusCode: 200,
@@ -13,7 +17,9 @@ const searchByMode = async ({ mode }) => {
   }
 
   if (mode === "top10") {
-    const items = await Product.find({ soldCount: { $exists: true } })
+    const items = await Product.find({
+      $and: [{ soldCount: { $exists: true } }, visibleOnly()],
+    })
       .sort({ soldCount: -1 })
       .limit(10);
     return {
@@ -25,7 +31,9 @@ const searchByMode = async ({ mode }) => {
   }
 
   if (mode === "sale10") {
-    const items = await Product.find({ discount: { $exists: true } })
+    const items = await Product.find({
+      $and: [{ discount: { $exists: true } }, visibleOnly()],
+    })
       .sort({ discount: -1 })
       .limit(10);
 
@@ -39,6 +47,7 @@ const searchByMode = async ({ mode }) => {
 
   if (mode === "topAuthors") {
     const items = await Product.aggregate([
+      { $match: visibleOnly() },
       {
         $group: {
           _id: "$author",
@@ -72,12 +81,17 @@ const searchProducts = async ({ params = {} }) => {
   }
 
   const filter = buildProductFilter(params);
+  const includeHidden = String(params.includeHidden) === "true";
+  const visibilityFilter = {
+    $or: [{ isHidden: false }, { isHidden: { $exists: false } }],
+  };
+  const mongoFilter = includeHidden ? filter : { $and: [filter, visibilityFilter] };
   const { page, limit, skip } = parsePagination(params);
   const sort = parseSort(params);
 
   const [items, total] = await Promise.all([
-    Product.find(filter).sort(sort).skip(skip).limit(limit),
-    Product.countDocuments(filter),
+    Product.find(mongoFilter).sort(sort).skip(skip).limit(limit),
+    Product.countDocuments(mongoFilter),
   ]);
 
   return {

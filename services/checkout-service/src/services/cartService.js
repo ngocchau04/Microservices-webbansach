@@ -1,4 +1,4 @@
-﻿const Cart = require("../models/Cart");
+const Cart = require("../models/Cart");
 const { fetchProductSnapshot } = require("./catalogClient");
 const voucherService = require("./voucherService");
 const { roundMoney } = require("../utils/money");
@@ -71,6 +71,60 @@ const ensureCart = async (userId) => {
   return hydrateCart(cart);
 };
 
+const buildStockValidationError = ({
+  requestedQuantity,
+  stockSnapshot,
+  currentCartQuantity = 0,
+}) => {
+  if (stockSnapshot === 0) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "Product is out of stock",
+      code: "CHECKOUT_STOCK_OUT",
+      legacy: {
+        currentStock: 0,
+        remainingStock: 0,
+        requestedQuantity,
+        currentCartQuantity,
+      },
+    };
+  }
+
+  if (requestedQuantity > stockSnapshot) {
+    const remainingStock = Math.max(stockSnapshot - currentCartQuantity, 0);
+    if (currentCartQuantity >= stockSnapshot && stockSnapshot > 0) {
+      return {
+        ok: false,
+        statusCode: 400,
+        message: "Maximum available quantity already in cart",
+        code: "CHECKOUT_STOCK_MAX_IN_CART",
+        legacy: {
+          currentStock: stockSnapshot,
+          remainingStock,
+          requestedQuantity,
+          currentCartQuantity,
+        },
+      };
+    }
+
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "Quantity exceeds current stock",
+      code: "CHECKOUT_STOCK_EXCEEDED",
+      legacy: {
+        currentStock: stockSnapshot,
+        remainingStock,
+        requestedQuantity,
+        currentCartQuantity,
+      },
+    };
+  }
+
+  return null;
+};
+
 const getCart = async ({ userId }) => {
   const cart = await ensureCart(userId);
   await cart.save();
@@ -122,17 +176,16 @@ const upsertCartItem = async ({ userId, productId, quantity, config }) => {
   }
 
   const snapshot = productResult.data;
-  if (normalizedQuantity > snapshot.stockSnapshot) {
-    return {
-      ok: false,
-      statusCode: 400,
-      message: "Quantity exceeds current stock",
-      code: "CHECKOUT_STOCK_EXCEEDED",
-    };
-  }
-
   const cart = await ensureCart(userId);
   const existing = cart.items.find((item) => item.productId === snapshot.productId);
+  const stockError = buildStockValidationError({
+    requestedQuantity: normalizedQuantity,
+    stockSnapshot: snapshot.stockSnapshot,
+    currentCartQuantity: Number(existing?.quantity) || 0,
+  });
+  if (stockError) {
+    return stockError;
+  }
 
   if (existing) {
     existing.title = snapshot.title;
@@ -221,13 +274,13 @@ const updateCartItem = async ({ userId, itemId, quantity, config }) => {
   }
 
   const snapshot = productResult.data;
-  if (normalizedQuantity > snapshot.stockSnapshot) {
-    return {
-      ok: false,
-      statusCode: 400,
-      message: "Quantity exceeds current stock",
-      code: "CHECKOUT_STOCK_EXCEEDED",
-    };
+  const stockError = buildStockValidationError({
+    requestedQuantity: normalizedQuantity,
+    stockSnapshot: snapshot.stockSnapshot,
+    currentCartQuantity: Number(item.quantity) || 0,
+  });
+  if (stockError) {
+    return stockError;
   }
 
   item.title = snapshot.title;

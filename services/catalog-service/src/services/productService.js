@@ -38,18 +38,27 @@ const normalizeProductPayload = (payload = {}) => {
     next.features = next.features.filter((item) => typeof item === "string");
   }
 
+  if (next.isHidden !== undefined) {
+    next.isHidden = Boolean(next.isHidden);
+  }
+
   return next;
 };
 
 const listProducts = async ({ query = {}, tenantId = "public" }) => {
   const filter = buildProductFilter(query);
   filter.tenantId = tenantId;
+  const includeHidden = String(query.includeHidden) === "true";
+  const visibilityFilter = {
+    $or: [{ isHidden: false }, { isHidden: { $exists: false } }],
+  };
+  const mongoFilter = includeHidden ? filter : { $and: [filter, visibilityFilter] };
   const { page, limit, skip } = parsePagination(query);
   const sort = parseSort(query);
 
   const [items, total] = await Promise.all([
-    Product.find(filter).sort(sort).skip(skip).limit(limit),
-    Product.countDocuments(filter),
+    Product.find(mongoFilter).sort(sort).skip(skip).limit(limit),
+    Product.countDocuments(mongoFilter),
   ]);
 
   return {
@@ -230,7 +239,12 @@ const listProductsByIds = async ({ ids = [] }) => {
 };
 
 const listSimilarProducts = async ({ type }) => {
-  const items = await Product.find({ type }).limit(10);
+  const items = await Product.find({
+    $and: [
+      { type },
+      { $or: [{ isHidden: false }, { isHidden: { $exists: false } }] },
+    ],
+  }).limit(10);
 
   return {
     ok: true,

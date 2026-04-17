@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import "./BookDetail.css";
 import Header from "../../components/Header";
@@ -29,6 +29,35 @@ const BookDetail = () => {
   const [reviewEligibility, setReviewEligibility] = useState(null);
   const [reviewEligibilityMsg, setReviewEligibilityMsg] = useState("");
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
+
+  const getCartStockErrorMessage = (error) => {
+    const payload = error?.response?.data || {};
+    const code = payload?.code;
+    const remainingStock = Number(payload?.remainingStock);
+    const currentStock = Number(payload?.currentStock);
+
+    if (code === "CHECKOUT_STOCK_OUT") {
+      return "Sản phẩm này hiện đã hết hàng, vui lòng quay lại sau!";
+    }
+    if (code === "CHECKOUT_STOCK_MAX_IN_CART") {
+      return "Bạn đã thêm tối đa số lượng hiện có trong kho.";
+    }
+    if (code === "CHECKOUT_STOCK_EXCEEDED") {
+      if (Number.isFinite(remainingStock) && remainingStock > 0) {
+        return `Sản phẩm chỉ còn ${remainingStock} cuốn trong kho.`;
+      }
+      if (Number.isFinite(currentStock) && currentStock >= 0) {
+        return `Số lượng bạn chọn vượt quá tồn kho hiện tại. Sản phẩm còn ${currentStock} cuốn.`;
+      }
+      return "Số lượng bạn chọn vượt quá tồn kho hiện tại.";
+    }
+
+    if (String(payload?.message || "").includes("Quantity exceeds current stock")) {
+      return "Số lượng bạn chọn vượt quá tồn kho hiện tại.";
+    }
+
+    return payload?.message || "Không thể cập nhật giỏ hàng.";
+  };
 
   useEffect(() => {
     getProductById(id)
@@ -277,8 +306,7 @@ const BookDetail = () => {
       });
     } catch (error) {
       console.error(error);
-      const msg =
-        error?.response?.data?.message || "Không thể cập nhật giỏ hàng.";
+      const msg = getCartStockErrorMessage(error);
       alert(msg);
     }
   };

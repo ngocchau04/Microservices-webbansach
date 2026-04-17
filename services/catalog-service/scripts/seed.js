@@ -20,6 +20,7 @@ const seedProducts = [
     description: "Practical Node.js patterns for production services.",
     publisher: "Bookstore Press",
     language: "none",
+    stock: 14,
   },
   {
     title: "React Architecture Handbook",
@@ -34,6 +35,7 @@ const seedProducts = [
     description: "Modern React architecture and scalable UI patterns.",
     publisher: "Frontend Books",
     language: "none",
+    stock: 9,
   },
   {
     title: "Designing Data-Intensive Systems",
@@ -48,6 +50,7 @@ const seedProducts = [
     description: "Distributed systems and data engineering foundations.",
     publisher: "Tech Core",
     language: "none",
+    stock: 4,
   },
   {
     title: "Clean Code in JavaScript",
@@ -62,6 +65,7 @@ const seedProducts = [
     description: "Code quality habits tailored for JavaScript projects.",
     publisher: "Dev Mind",
     language: "none",
+    stock: 2,
   },
   {
     title: "MongoDB Applied Patterns",
@@ -76,6 +80,7 @@ const seedProducts = [
     description: "Schema and query patterns for scalable MongoDB apps.",
     publisher: "Data Craft",
     language: "none",
+    stock: 0,
   },
 ];
 

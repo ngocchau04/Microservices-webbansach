@@ -38,6 +38,8 @@ const productSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    /** Admin: hide from storefront listings when true (optional; defaults visible). */
+    isHidden: { type: Boolean, default: false, index: true },
   },
   { versionKey: false, timestamps: true }
 );

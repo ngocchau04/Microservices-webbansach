@@ -37,16 +37,23 @@ const normalizeProduct = (payload) => {
     return null;
   }
 
-  const stock = Number(item.stock);
+  const rawStock = item.stock;
+  const stock = Number(rawStock);
+  const hasStockValue =
+    rawStock !== undefined &&
+    rawStock !== null &&
+    rawStock !== "" &&
+    Number.isFinite(stock) &&
+    stock >= 0;
 
   return {
     productId: String(item._id),
     title: item.title || "",
     price: Number(item.price) || 0,
     image: item.imgSrc || item.image || "",
-    // Legacy catalog records frequently carry default stock=0 while inventory
-    // is not explicitly managed; treat non-positive stock as "unspecified".
-    stockSnapshot: Number.isFinite(stock) && stock > 0 ? stock : 999999,
+    // Keep explicit zero stock for accurate out-of-stock checks.
+    // Only treat truly missing stock as unspecified.
+    stockSnapshot: hasStockValue ? stock : 999999,
   };
 };
 
