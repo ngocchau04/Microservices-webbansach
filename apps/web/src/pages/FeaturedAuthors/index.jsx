@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
-import { getProducts } from "../../api/catalogApi";
 import { buildAuthorDirectory } from "./aggregateAuthors";
+import { fetchCatalogProductsForAuthorDirectory } from "./fetchCatalogProducts";
 import AuthorCard from "./AuthorCard";
 import "./FeaturedAuthors.css";
 
@@ -20,9 +20,7 @@ function FeaturedAuthors() {
       setLoading(true);
       setError(null);
       try {
-        const res = await getProducts({ limit: 500, page: 1 });
-        const items = res?.data?.items || res?.data?.products || [];
-        const list = Array.isArray(items) ? items : [];
+        const list = await fetchCatalogProductsForAuthorDirectory();
         if (!cancelled) {
           setAuthors(buildAuthorDirectory(list));
         }
@@ -67,6 +65,12 @@ function FeaturedAuthors() {
             Tập hợp các tác giả có sách trong kho Bookie. Chọn tác giả để xem toàn bộ đầu sách hoặc mở nhanh
             từng cuốn tiêu biểu.
           </p>
+          {!loading && !error && authors.length > 0 ? (
+            <p className="featured-authors-meta" role="status">
+              <span className="featured-authors-meta__num">{authors.length}</span> tác giả · dữ liệu từ danh mục
+              sách
+            </p>
+          ) : null}
           <div className="featured-authors-search">
             <input
               type="search"
@@ -83,9 +87,22 @@ function FeaturedAuthors() {
 
         {!loading && !error && filtered.length === 0 && (
           <div className="featured-authors-empty">
-            {authors.length === 0
-              ? "Chưa có dữ liệu tác giả từ kho sách."
-              : "Không có tác giả khớp bộ lọc. Thử từ khóa khác."}
+            {authors.length === 0 ? (
+              <>
+                <p className="featured-authors-empty__title">Chưa tìm thấy tác giả trong danh mục</p>
+                <p className="featured-authors-empty__text">
+                  Hệ thống chưa đọc được sản phẩm nào từ kho sách để gom theo tác giả. Vui lòng thử lại sau hoặc
+                  kiểm tra kết nối tới dịch vụ danh mục.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="featured-authors-empty__title">Không khớp tìm kiếm</p>
+                <p className="featured-authors-empty__text">
+                  Không có tác giả khớp bộ lọc. Thử từ khóa khác hoặc xóa ô tìm kiếm để xem toàn bộ.
+                </p>
+              </>
+            )}
           </div>
         )}
 

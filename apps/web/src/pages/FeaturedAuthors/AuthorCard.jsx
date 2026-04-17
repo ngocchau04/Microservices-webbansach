@@ -32,10 +32,10 @@ export default function AuthorCard({ name, count, sampleBooks }) {
         <div className="author-card__samples">
           <span className="author-card__samples-label">Một vài cuốn tiêu biểu</span>
           <ul className="author-card__covers">
-            {sampleBooks.map((book) => {
+            {sampleBooks.map((book, idx) => {
               const src = book.imgSrc || book.image || "";
               return (
-                <li key={book._id} className="author-card__cover-item">
+                <li key={String(book._id ?? book.title ?? idx)} className="author-card__cover-item">
                   <Link to={`/book/${book._id}`} className="author-card__cover-link" title={book.title}>
                     {src ? (
                       <img src={src} alt="" className="author-card__cover-img" />

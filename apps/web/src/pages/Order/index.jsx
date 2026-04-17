@@ -126,6 +126,16 @@ const Order = () => {
     () => MOCK_PAY_CHANNELS.find((c) => c.id === mockPayChannel) || MOCK_PAY_CHANNELS[0],
     [mockPayChannel]
   );
+
+  const canSubmitCheckout = useMemo(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return false;
+    if (!lineItems.length) return false;
+    if (!name.trim() || !email.trim() || !phone.trim()) return false;
+    if (!provinceCode || !districtCode || !wardName || !addressDetail.trim()) return false;
+    if (isVoucherInputBlockingCheckout({ voucherInput, appliedVoucher })) return false;
+    return true;
+  }, [lineItems, name, email, phone, provinceCode, districtCode, wardName, addressDetail, voucherInput, appliedVoucher]);
   const selectedProvince = useMemo(
     () => VN_LOCATION_DATA.find((province) => province.code === provinceCode) || null,
     [provinceCode]
@@ -1015,8 +1025,17 @@ const Order = () => {
                 }`}
                 data-checkout-pay-mode={isOnlinePayment ? "online" : "cod"}
               >
-                <h3 className="payment-method__title">Phương thức thanh toán</h3>
-                <div className="payment-method__options">
+                <div className="payment-method__head">
+                  <span className="payment-method__step-tag" aria-hidden="true">
+                    Bước 1
+                  </span>
+                  <h3 className="payment-method__title">Phương thức thanh toán</h3>
+                  <p className="payment-method__subtitle">
+                    Chọn thanh toán khi nhận hàng hoặc thanh toán trực tuyến (luồng demo, không trừ tiền
+                    thật).
+                  </p>
+                </div>
+                <div className="payment-method__options" role="radiogroup" aria-label="Phương thức thanh toán">
                   <label className="payment-method__option">
                     <input
                       type="radio"
@@ -1045,27 +1064,32 @@ const Order = () => {
 
                 {selectedPayment === "cod" ? (
                   <p className="payment-method__hint payment-method__hint--cod">
-                    Bạn sẽ thanh toán khi nhận hàng.
+                    Bạn sẽ thanh toán khi nhận hàng. Sau khi đặt, đơn được ghi nhận và giao theo địa chỉ đã
+                    nhập.
                   </p>
                 ) : (
-                  <div className="payment-online-panel" aria-label="Chuẩn bị thanh toán online">
+                  <div className="payment-online-panel" role="region" aria-label="Cấu hình thanh toán online">
+                    <div className="payment-online-panel__stepbar" aria-hidden="true">
+                      <span className="payment-online-panel__step-pill">Bước 2</span>
+                      <span className="payment-online-panel__step-line" />
+                    </div>
                     <div className="payment-online-panel__head">
                       <div>
-                        <p className="payment-online-panel__eyebrow">Thanh toán online</p>
-                        <p className="payment-online-panel__title">Thông tin thanh toán</p>
+                        <p className="payment-online-panel__eyebrow">Kênh thanh toán (demo)</p>
+                        <p className="payment-online-panel__title">Chọn cách bạn muốn thanh toán</p>
                         <p className="payment-online-panel__lead">
-                          Xác nhận thanh toán nhanh chóng và an toàn. Bạn sẽ được chuyển sang bước xác
-                          nhận thanh toán sau khi đặt đơn.
+                          Đây chỉ là lựa chọn giao diện để minh họa. Bước xác nhận cuối cùng sẽ mở sau khi
+                          bạn nhấn nút ở phần tóm tắt bên dưới.
                         </p>
                       </div>
                       <div className="payment-online-panel__badges" aria-hidden="true">
-                        <span className="payment-online-panel__badge">Thanh toán bảo mật</span>
+                        <span className="payment-online-panel__badge">Luồng demo</span>
                         <span className="payment-online-panel__badge payment-online-panel__badge--gold">
-                          Xác nhận tức thì
+                          Không cổng thật
                         </span>
                       </div>
                     </div>
-                    <p className="payment-online-panel__pick-label">Chọn kênh thanh toán (demo)</p>
+                    <p className="payment-online-panel__pick-label">Chọn một kênh (ô vuông có thể bấm)</p>
                     <div className="payment-online-panel__grid" role="group" aria-label="Kênh thanh toán demo">
                       {MOCK_PAY_CHANNELS.map((ch) => (
                         <button
@@ -1075,6 +1099,7 @@ const Order = () => {
                             mockPayChannel === ch.id ? " payment-online-panel__tile--active" : ""
                           }`}
                           onClick={() => setMockPayChannel(ch.id)}
+                          aria-pressed={mockPayChannel === ch.id}
                         >
                           <span className="payment-online-panel__tile-icon" aria-hidden="true">
                             {ch.icon}
@@ -1083,9 +1108,14 @@ const Order = () => {
                         </button>
                       ))}
                     </div>
+                    <ul className="payment-online-panel__trust" aria-label="Lưu ý an toàn (demo)">
+                      <li>Giao dịch được mã hóa trong luồng demo — không kết nối cổng thanh toán thật.</li>
+                      <li>Hệ thống không lưu thông tin thẻ, ví hoặc mật khẩu thanh toán.</li>
+                      <li>Bạn xác nhận thanh toán một lần nữa trong cửa sổ tiếp theo trước khi hoàn tất đơn.</li>
+                    </ul>
                     <p className="payment-online-panel__mock-note">
-                      Đây là giao diện minh họa — không trừ tiền thật. Luồng đặt hàng giữ nguyên như hệ
-                      thống hiện tại.
+                      Minh họa giao diện — không trừ tiền thật. Luồng đặt hàng và API giữ nguyên như phiên bản
+                      hiện tại.
                     </p>
                   </div>
                 )}
@@ -1103,24 +1133,41 @@ const Order = () => {
             <div className="order-summary__inner">
               <div className="order-summary__copy">
                 <div className="order-summary__head">
+                  <span className="order-summary__step-tag" aria-hidden="true">
+                    {isOnlinePayment ? "Bước 3" : "Bước cuối"}
+                  </span>
                   <h2 className="order-summary__heading">
-                    {isOnlinePayment ? "Xác nhận thanh toán" : "Tóm tắt đơn hàng"}
+                    {isOnlinePayment ? "Tóm tắt & xác nhận thanh toán" : "Tóm tắt đơn hàng"}
                   </h2>
                   <p className="order-summary__sub">
                     {isOnlinePayment
-                      ? "Kiểm tra lần cuối trước khi thanh toán online."
-                      : "Kiểm tra giá trước khi xác nhận đặt hàng."}
+                      ? "Kiểm tra phương thức, kênh demo và tổng tiền trước khi mở bước xác nhận thanh toán."
+                      : "Kiểm tra giá và thông tin giao hàng trước khi đặt hàng."}
                   </p>
                   {isOnlinePayment ? (
                     <div className="order-summary__trust-strip" aria-hidden="true">
-                      <span className="order-summary__trust-pill">Thanh toán bảo mật</span>
+                      <span className="order-summary__trust-pill">Xác nhận hai lần (demo)</span>
                       <span className="order-summary__trust-pill order-summary__trust-pill--emph">
-                        Xác nhận tức thì
+                        Không trừ tiền thật
                       </span>
                     </div>
                   ) : null}
                 </div>
                 <div className="order-summary__rows">
+                  <div className="order-summary__row order-summary__row--pay-method">
+                    <span className="order-summary__label">Phương thức thanh toán</span>
+                    <span className="order-summary__value order-summary__value--strong">
+                      {isOnlinePayment ? "Thanh toán online (demo)" : "Thanh toán khi nhận hàng (COD)"}
+                    </span>
+                  </div>
+                  {isOnlinePayment ? (
+                    <div className="order-summary__row order-summary__row--pay-channel">
+                      <span className="order-summary__label">Kênh đã chọn (demo)</span>
+                      <span className="order-summary__value order-summary__value--strong">
+                        {selectedMockChannel.label}
+                      </span>
+                    </div>
+                  ) : null}
                   <div className="order-summary__row">
                     <span className="order-summary__label">Tổng số sản phẩm</span>
                     <span className="order-summary__value">{lineItems.length}</span>
@@ -1161,6 +1208,20 @@ const Order = () => {
                     </span>
                     <span className="order-summary__total">{formatMoney(total)} VND</span>
                   </div>
+                  <div
+                    className={`order-summary__readiness${
+                      canSubmitCheckout
+                        ? " order-summary__readiness--ok"
+                        : " order-summary__readiness--pending"
+                    }`}
+                    role="status"
+                  >
+                    {canSubmitCheckout
+                      ? isOnlinePayment
+                        ? "Sẵn sàng: có thể mở bước xác nhận thanh toán online."
+                        : "Sẵn sàng: có thể đặt hàng."
+                      : "Chưa đủ điều kiện: hoàn thành địa chỉ, thông tin nhận hàng và voucher (nếu nhập)."}
+                  </div>
                 </div>
               </div>
               <div
@@ -1170,8 +1231,8 @@ const Order = () => {
               >
                 <p className="order-summary__cta-note">
                   {isOnlinePayment
-                    ? "Nhấn để mở bước xác nhận thanh toán online (mock), sau đó hoàn tất đơn."
-                    : "Xác nhận thông tin và hoàn tất đơn hàng."}
+                    ? "Mở cửa sổ xác nhận thanh toán demo — đơn chỉ được ghi nhận sau khi bạn xác nhận ở bước đó."
+                    : "Ghi nhận đơn COD và chuyển tới trang cá nhân sau khi thành công."}
                 </p>
                 <button
                   type="button"
@@ -1179,8 +1240,14 @@ const Order = () => {
                     isOnlinePayment ? " order-summary__cta--online-pay" : ""
                   }`}
                   onClick={handleBuy}
+                  disabled={!canSubmitCheckout}
+                  title={
+                    canSubmitCheckout
+                      ? undefined
+                      : "Vui lòng đăng nhập, có sản phẩm, điền đủ thông tin giao hàng và xử lý voucher (nếu có)."
+                  }
                 >
-                  {isOnlinePayment ? "Thanh toán ngay" : "Đặt hàng"}
+                  {isOnlinePayment ? "Tiếp tục thanh toán" : "Đặt hàng"}
                 </button>
               </div>
             </div>
