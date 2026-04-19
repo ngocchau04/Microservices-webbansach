@@ -34,9 +34,6 @@ export const register = (payload) =>
 export const refreshToken = (payload) =>
   withNormalizedResponse(apiClient.post("/api/auth/refresh-token", payload));
 
-export const verifyAccount = (payload) =>
-  withNormalizedResponse(apiClient.post("/api/auth/verify-account", payload));
-
 export const googleLogin = (payload) =>
   withNormalizedResponse(apiClient.post("/api/auth/google-login", payload));
 
@@ -47,16 +44,11 @@ export const getMe = (token) =>
     })
   );
 
-export const checkEmail = (payload) =>
-  withNormalizedResponse(apiClient.post("/api/auth/check-email", payload));
-
-export const resendVerification = (payload) =>
-  withNormalizedResponse(
-    apiClient.post("/api/auth/resend-verification", payload)
-  );
-
 export const forgotPassword = (payload) =>
   withNormalizedResponse(apiClient.post("/api/auth/forgot-password", payload));
+
+export const resetPassword = (payload) =>
+  withNormalizedResponse(apiClient.post("/api/auth/reset-password", payload));
 
 export const updateMe = (payload) =>
   withNormalizedResponse(apiClient.put("/api/auth/me", payload));

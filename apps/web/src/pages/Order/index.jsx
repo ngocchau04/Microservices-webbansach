@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+﻿import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Footer from "../../components/Footer";
 import Header from "../../components/Header";
 import "./styles.css";
@@ -16,46 +16,65 @@ import {
   isVoucherInputBlockingCheckout,
   normalizeVoucherCode,
 } from "./voucherCheckoutState";
-import { VN_LOCATION_DATA } from "./vnLocationData";
+import {
+  listProvincesV2,
+  listWardsByProvinceV2,
+} from "../../api/addressApi";
 
-/** Mock online payment channels (visual only; no gateway). */
-const MOCK_PAY_CHANNELS = [
-  { id: "wallet", icon: "◎", label: "Ví điện tử" },
-  { id: "card", icon: "▭", label: "Thẻ ngân hàng" },
-  { id: "qr", icon: "▢", label: "QR thanh toán" },
-  { id: "gateway", icon: "◇", label: "Cổng thanh toán (mock)" },
+/** Available online payment channels for the current gateway integration. */
+const ONLINE_PAY_CHANNELS = [
+  {
+    id: "vnpay",
+    icon: "V",
+    label: "VNPay Sandbox",
+    providerLabel: "VNPay",
+    redirectLabel: "VNPay sandbox",
+  },
+  {
+    id: "momo",
+    icon: "MoMo",
+    label: "MoMo Test",
+    providerLabel: "MoMo",
+    redirectLabel: "MoMo test",
+  },
 ];
 
 /** Minimum time the processing UI is shown (feels intentional; API may be faster). */
 const ONLINE_MIN_PROCESS_MS = 1400;
-/** Success screen duration before navigating to /payment (existing flow). */
+/** Success screen duration before redirecting to the provider page. */
 const ONLINE_SUCCESS_HOLD_MS = 2400;
 
 const Order = () => {
   const navigate = useNavigate();
   const { user, setUser } = useUser();
+  const savedShipping = user?.shippingAddress || {};
 
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPayment, setSelectedPayment] = useState("cod");
-  /** Visual-only mock channel for online payment UI (no gateway integration). */
-  const [mockPayChannel, setMockPayChannel] = useState("wallet");
-  const [name, setName] = useState(user?.name || "");
-  const [email, setEmail] = useState(user?.email || "");
-  const [phone, setPhone] = useState(user?.phone || user?.sdt || "");
-  const [provinceCode, setProvinceCode] = useState("");
-  const [districtCode, setDistrictCode] = useState("");
-  const [wardName, setWardName] = useState("");
-  const [addressDetail, setAddressDetail] = useState(user?.address || "");
+  const [selectedOnlineProvider, setSelectedOnlineProvider] = useState("vnpay");
+  const [name, setName] = useState(savedShipping.name || user?.name || "");
+  const [email, setEmail] = useState(savedShipping.email || user?.email || "");
+  const [phone, setPhone] = useState(savedShipping.phone || user?.phone || user?.sdt || "");
+  const [provinceCode, setProvinceCode] = useState(savedShipping.provinceCode || "");
+  const [wardCode, setWardCode] = useState(savedShipping.wardCode || "");
+  const [addressDetail, setAddressDetail] = useState(
+    savedShipping.addressDetail || user?.address || ""
+  );
   const [addressError, setAddressError] = useState("");
+  const [locationError, setLocationError] = useState("");
+  const [provinces, setProvinces] = useState([]);
+  const [wardOptions, setWardOptions] = useState([]);
+  const [provinceLoading, setProvinceLoading] = useState(false);
+  const [wardLoading, setWardLoading] = useState(false);
   const [voucherInput, setVoucherInput] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState(null);
   const [voucherError, setVoucherError] = useState("");
-  /** Online-only: mock payment confirmation step before order API calls. */
+  /** Online-only confirmation step before order API calls. */
   const [paymentConfirmOpen, setPaymentConfirmOpen] = useState(false);
   /** idle: confirm form; processing: API + min time; success: brief hold before redirect */
   const [onlinePayPhase, setOnlinePayPhase] = useState("idle");
-  /** Populated after successful online API; drives redirect to /payment */
+  /** Populated after successful online API; drives redirect to the provider page. */
   const [pendingPaymentNav, setPendingPaymentNav] = useState(null);
   /** Rotating microcopy during processing (0 → 1) for clearer payment steps */
   const [processingCopyStep, setProcessingCopyStep] = useState(0);
@@ -88,6 +107,74 @@ const Order = () => {
 
     fetchBooks();
   }, [user?.order?.products]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadProvinces = async () => {
+      setProvinceLoading(true);
+      setLocationError("");
+
+      try {
+        const items = await listProvincesV2();
+        if (!active) return;
+        setProvinces(items);
+      } catch (error) {
+        console.error("Loi khi lay danh sach tinh/thanh:", error);
+        if (!active) return;
+        setProvinces([]);
+        setLocationError("Không thể tải danh sách tỉnh/thành. Vui lòng thử lại.");
+      } finally {
+        if (active) {
+          setProvinceLoading(false);
+        }
+      }
+    };
+
+    loadProvinces();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!provinceCode) {
+      setWardOptions([]);
+      setWardLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    const loadWards = async () => {
+      setLocationError("");
+      setWardLoading(true);
+
+      try {
+        const items = await listWardsByProvinceV2(provinceCode);
+        if (!active) return;
+        setWardOptions(items);
+      } catch (error) {
+        console.error("Loi khi lay danh sach phuong/xa:", error);
+        if (!active) return;
+        setWardOptions([]);
+        setLocationError("Không thể tải phường/xã. Vui lòng chọn lại tỉnh/thành.");
+      } finally {
+        if (active) {
+          setWardLoading(false);
+        }
+      }
+    };
+
+    loadWards();
+
+    return () => {
+      active = false;
+    };
+  }, [provinceCode]);
 
   const productMap = useMemo(() => {
     const map = new Map();
@@ -122,9 +209,11 @@ const Order = () => {
 
   const total = Math.max(subtotal - voucherDiscount, 0);
   const isOnlinePayment = selectedPayment === "online";
-  const selectedMockChannel = useMemo(
-    () => MOCK_PAY_CHANNELS.find((c) => c.id === mockPayChannel) || MOCK_PAY_CHANNELS[0],
-    [mockPayChannel]
+  const selectedOnlineChannel = useMemo(
+    () =>
+      ONLINE_PAY_CHANNELS.find((channel) => channel.id === selectedOnlineProvider) ||
+      ONLINE_PAY_CHANNELS[0],
+    [selectedOnlineProvider]
   );
 
   const canSubmitCheckout = useMemo(() => {
@@ -132,29 +221,26 @@ const Order = () => {
     if (!token) return false;
     if (!lineItems.length) return false;
     if (!name.trim() || !email.trim() || !phone.trim()) return false;
-    if (!provinceCode || !districtCode || !wardName || !addressDetail.trim()) return false;
+    if (!provinceCode || !wardCode || !addressDetail.trim()) return false;
     if (isVoucherInputBlockingCheckout({ voucherInput, appliedVoucher })) return false;
     return true;
-  }, [lineItems, name, email, phone, provinceCode, districtCode, wardName, addressDetail, voucherInput, appliedVoucher]);
+  }, [lineItems, name, email, phone, provinceCode, wardCode, addressDetail, voucherInput, appliedVoucher]);
   const selectedProvince = useMemo(
-    () => VN_LOCATION_DATA.find((province) => province.code === provinceCode) || null,
-    [provinceCode]
+    () => provinces.find((province) => String(province.code) === String(provinceCode)) || null,
+    [provinces, provinceCode]
   );
-  const districtOptions = selectedProvince?.districts || [];
-  const selectedDistrict = useMemo(
-    () => districtOptions.find((district) => district.code === districtCode) || null,
-    [districtOptions, districtCode]
+  const selectedWard = useMemo(
+    () => wardOptions.find((ward) => String(ward.code) === String(wardCode)) || null,
+    [wardOptions, wardCode]
   );
-  const wardOptions = selectedDistrict?.wards || [];
   const composedShippingAddress = useMemo(() => {
     const parts = [
       addressDetail.trim(),
-      wardName.trim(),
-      selectedDistrict?.name,
+      selectedWard?.name,
       selectedProvince?.name,
     ].filter(Boolean);
     return parts.join(", ");
-  }, [addressDetail, wardName, selectedDistrict?.name, selectedProvince?.name]);
+  }, [addressDetail, selectedWard?.name, selectedProvince?.name]);
 
   const formatMoney = (money) =>
     new Intl.NumberFormat("vi-VN").format(Number(money) || 0);
@@ -166,14 +252,90 @@ const Order = () => {
     return title;
   };
 
+  const paymentChannelIconClass = useCallback(
+    (channel) =>
+      channel?.icon && String(channel.icon).length > 1
+        ? "payment-online-panel__tile-icon payment-online-panel__tile-icon--wordmark"
+        : "payment-online-panel__tile-icon",
+    []
+  );
+
+  const confirmIconClass = useCallback(
+    (channel) =>
+      channel?.icon && String(channel.icon).length > 1
+        ? "pay-confirm__method-icon pay-confirm__method-icon--wordmark"
+        : "pay-confirm__method-icon",
+    []
+  );
+
+  const orbitIconClass = useCallback(
+    (channel) =>
+      channel?.icon && String(channel.icon).length > 1
+        ? "pay-confirm__orbit-icon pay-confirm__orbit-icon--wordmark"
+        : "pay-confirm__orbit-icon",
+    []
+  );
+
+  const persistShippingDraft = useCallback(() => {
+    if (!user) return;
+
+    const nextShippingAddress = {
+      name,
+      email,
+      phone,
+      provinceCode,
+      provinceName: selectedProvince?.name || "",
+      wardCode,
+      wardName: selectedWard?.name || "",
+      addressDetail,
+      fullAddress: composedShippingAddress,
+    };
+
+    const prevShippingAddress = user?.shippingAddress || {};
+    const hasChanged =
+      prevShippingAddress.name !== nextShippingAddress.name ||
+      prevShippingAddress.email !== nextShippingAddress.email ||
+      prevShippingAddress.phone !== nextShippingAddress.phone ||
+      prevShippingAddress.provinceCode !== nextShippingAddress.provinceCode ||
+      prevShippingAddress.provinceName !== nextShippingAddress.provinceName ||
+      prevShippingAddress.wardCode !== nextShippingAddress.wardCode ||
+      prevShippingAddress.wardName !== nextShippingAddress.wardName ||
+      prevShippingAddress.addressDetail !== nextShippingAddress.addressDetail ||
+      prevShippingAddress.fullAddress !== nextShippingAddress.fullAddress;
+
+    if (!hasChanged) return;
+
+    setUser({
+      ...user,
+      address: composedShippingAddress || user?.address || "",
+      shippingAddress: nextShippingAddress,
+    });
+  }, [
+    user,
+    setUser,
+    name,
+    email,
+    phone,
+    provinceCode,
+    wardCode,
+    addressDetail,
+    selectedProvince?.name,
+    selectedWard?.name,
+    composedShippingAddress,
+  ]);
+
+  useEffect(() => {
+    persistShippingDraft();
+  }, [persistShippingDraft]);
+
   const updateOrderProducts = (next) => {
-    setUser((prev) => ({
-      ...prev,
+    setUser({
+      ...user,
       order: {
-        ...(prev?.order || {}),
+        ...(user?.order || {}),
         products: next,
       },
-    }));
+    });
   };
 
   const clearVoucherState = () => {
@@ -183,15 +345,9 @@ const Order = () => {
 
   const handleProvinceChange = (nextCode) => {
     setProvinceCode(nextCode);
-    setDistrictCode("");
-    setWardName("");
+    setWardCode("");
     setAddressError("");
-  };
-
-  const handleDistrictChange = (nextCode) => {
-    setDistrictCode(nextCode);
-    setWardName("");
-    setAddressError("");
+    setLocationError("");
   };
 
   const handleIncreaseQuantity = (index) => {
@@ -260,8 +416,8 @@ const Order = () => {
       alert("Vui long dien day du thong tin giao hang!");
       return false;
     }
-    if (!provinceCode || !districtCode || !wardName || !addressDetail.trim()) {
-      setAddressError("Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã và nhập địa chỉ chi tiết.");
+    if (!provinceCode || !wardCode || !addressDetail.trim()) {
+      setAddressError("Vui lòng chọn đầy đủ Tỉnh/Thành, Phường/Xã và nhập địa chỉ chi tiết.");
       alert("Vui lòng hoàn thiện đầy đủ địa chỉ giao hàng.");
       return false;
     }
@@ -277,8 +433,7 @@ const Order = () => {
     email,
     phone,
     provinceCode,
-    districtCode,
-    wardName,
+    wardCode,
     addressDetail,
     voucherInput,
     appliedVoucher,
@@ -314,18 +469,37 @@ const Order = () => {
       await removeCartItems(ids);
     }
 
-    setUser((prev) => ({
-      ...prev,
-      cart: (prev?.cart || []).filter((item) => !ids.includes(item.product)),
+    setUser({
+      ...user,
+      cart: (user?.cart || []).filter((item) => !ids.includes(item.product)),
+      address: composedShippingAddress,
+      shippingAddress: {
+        ...(user?.shippingAddress || {}),
+        name,
+        email,
+        phone,
+        provinceCode,
+        provinceName: selectedProvince?.name || "",
+        wardCode,
+        wardName: selectedWard?.name || "",
+        addressDetail,
+        fullAddress: composedShippingAddress,
+      },
       order: { products: [] },
-    }));
+    });
 
     return { orderId };
   }, [
+    user,
     user?._id,
     name,
     phone,
     email,
+    provinceCode,
+    wardCode,
+    addressDetail,
+    selectedProvince?.name,
+    selectedWard?.name,
     composedShippingAddress,
     selectedPayment,
     lineItems,
@@ -333,21 +507,33 @@ const Order = () => {
     setUser,
   ]);
 
-  /** Online: same API sequence as before, returns navigate state (no navigation). */
+  /** Online: create order first, then create payment and receive provider checkout URL. */
   const finalizeOnlinePaymentApi = useCallback(async () => {
     const { orderId } = await submitOrderCore();
-    const paymentRes = await createPayment({ orderId, method: "online" });
+    const paymentRes = await createPayment({
+      orderId,
+      method: "online",
+      provider: selectedOnlineChannel.id,
+    });
     const paymentId =
       paymentRes?.payment?._id ||
       paymentRes?.item?._id ||
       paymentRes?.transactionId;
+    const checkoutUrl = paymentRes?.checkoutUrl || paymentRes?.data?.checkoutUrl;
+
+    if (!checkoutUrl) {
+      throw new Error("Payment checkout URL not returned");
+    }
+
     return {
       total,
       orderId,
       paymentId,
-      channelLabel: selectedMockChannel.label,
+      checkoutUrl,
+      channelLabel: selectedOnlineChannel.label,
+      provider: paymentRes?.provider || selectedOnlineChannel.id,
     };
-  }, [submitOrderCore, total, selectedMockChannel.label]);
+  }, [submitOrderCore, total, selectedOnlineChannel]);
 
   /** COD only; online uses finalizeOnlinePaymentApi from the confirmation modal. */
   const completeCheckout = useCallback(async () => {
@@ -357,7 +543,7 @@ const Order = () => {
     navigate("/profile");
   }, [submitOrderCore, navigate]);
 
-  /** COD: validate and submit immediately. Online: open mock confirmation modal first. */
+  /** COD: validate and submit immediately. Online: open confirmation modal first. */
   const handleBuy = async () => {
     if (!validateCheckoutForm()) return;
 
@@ -409,10 +595,10 @@ const Order = () => {
   useEffect(() => {
     if (onlinePayPhase !== "success" || !pendingPaymentNav) return;
     const id = window.setTimeout(() => {
-      navigate("/payment", { state: pendingPaymentNav });
+      window.location.assign(pendingPaymentNav.checkoutUrl);
     }, ONLINE_SUCCESS_HOLD_MS);
     return () => window.clearTimeout(id);
-  }, [onlinePayPhase, pendingPaymentNav, navigate]);
+  }, [onlinePayPhase, pendingPaymentNav]);
 
   useEffect(() => {
     if (onlinePayPhase !== "processing") {
@@ -479,18 +665,20 @@ const Order = () => {
                   Xác nhận thanh toán online
                 </h2>
                 <p className="pay-confirm__subtitle">
-                  Bạn đang ở bước xác nhận thanh toán cuối cùng. Giao dịch mô phỏng an toàn — không trừ tiền
-                  thật.
+                  Bạn đang ở bước xác nhận cuối cùng. Hệ thống sẽ tạo giao dịch và chuyển bạn sang{" "}
+                  {selectedOnlineChannel.redirectLabel} để hoàn tất thanh toán.
                 </p>
               </header>
 
               <div className="pay-confirm__method-card">
                 <div className="pay-confirm__method-visual" aria-hidden="true">
-                  <span className="pay-confirm__method-icon">{selectedMockChannel.icon}</span>
+                  <span className={confirmIconClass(selectedOnlineChannel)}>
+                    {selectedOnlineChannel.icon}
+                  </span>
                 </div>
                 <div className="pay-confirm__method-copy">
                   <span className="pay-confirm__method-label">Kênh thanh toán</span>
-                  <span className="pay-confirm__method-name">{selectedMockChannel.label}</span>
+                  <span className="pay-confirm__method-name">{selectedOnlineChannel.label}</span>
                 </div>
               </div>
 
@@ -512,7 +700,7 @@ const Order = () => {
                 </li>
                 <li className="pay-confirm__trust-item">
                   <span className="pay-confirm__trust-dot" aria-hidden="true" />
-                  Luồng demo — không kết nối cổng thật
+                  Chuyen huong den {selectedOnlineChannel.redirectLabel}
                 </li>
               </ul>
 
@@ -539,10 +727,11 @@ const Order = () => {
             <div className="pay-confirm__phase pay-confirm__phase--processing" key="processing">
               <header className="pay-confirm__head pay-confirm__head--compact">
                 <h2 id="pay-confirm-processing-title" className="pay-confirm__title pay-confirm__title--sm">
-                  {processingCopyStep === 0 ? "Đang xác nhận giao dịch" : "Đang xử lý thanh toán"}
+                  {processingCopyStep === 0 ? "Dang tao giao dich" : "Dang chuan bi chuyen huong"}
                 </h2>
                 <p className="pay-confirm__subtitle pay-confirm__subtitle--muted">
-                  Giao dịch demo — an toàn và minh họa. Vui lòng không đóng cửa sổ này.
+                  He thong dang ghi nhan don hang va khoi tao phien thanh toan{" "}
+                  {selectedOnlineChannel.providerLabel}.
                 </p>
               </header>
 
@@ -576,7 +765,9 @@ const Order = () => {
                 <div className="pay-confirm__orbit">
                   <div className="pay-confirm__orbit-ring" />
                   <div className="pay-confirm__orbit-core">
-                    <span className="pay-confirm__orbit-icon">{selectedMockChannel.icon}</span>
+                    <span className={orbitIconClass(selectedOnlineChannel)}>
+                      {selectedOnlineChannel.icon}
+                    </span>
                   </div>
                 </div>
                 <div className="pay-confirm__bars">
@@ -589,13 +780,13 @@ const Order = () => {
               <div className="pay-confirm__process-copy">
                 <p className="pay-confirm__process-primary">
                   {processingCopyStep === 0
-                    ? "Đang xác nhận giao dịch..."
-                    : "Đang xử lý thanh toán..."}
+                    ? "Dang tao giao dich..."
+                    : `Dang chuan bi chuyen huong den ${selectedOnlineChannel.providerLabel}...`}
                 </p>
                 <p className="pay-confirm__process-secondary">
                   {processingCopyStep === 0
-                    ? "Đang kiểm tra và ghi nhận giao dịch trên hệ thống demo..."
-                    : "Đang khóa số tiền và hoàn tất thanh toán mô phỏng — vui lòng chờ thêm giây lát."}
+                    ? "Dang kiem tra thong tin don hang va tao giao dich thanh toan..."
+                    : `${selectedOnlineChannel.providerLabel} checkout URL da san sang. Trinh duyet se duoc mo trong giay lat.`}
                 </p>
               </div>
             </div>
@@ -618,9 +809,9 @@ const Order = () => {
                 </svg>
               </div>
               <h2 id="pay-confirm-success-title" className="pay-confirm__success-title">
-                Thanh toán thành công
+                San sang chuyen sang {selectedOnlineChannel.providerLabel}
               </h2>
-              <p className="pay-confirm__success-sub">Đơn hàng của bạn đã được xác nhận</p>
+              <p className="pay-confirm__success-sub">Don hang da duoc tao va phien thanh toan da san sang</p>
 
               <div className="pay-confirm__success-summary">
                 <div className="pay-confirm__success-row">
@@ -637,7 +828,7 @@ const Order = () => {
                 <div className="pay-confirm__success-row">
                   <span className="pay-confirm__success-k">Kênh thanh toán</span>
                   <span className="pay-confirm__success-v">
-                    {pendingPaymentNav.channelLabel || selectedMockChannel.label}
+                    {pendingPaymentNav.channelLabel || selectedOnlineChannel.label}
                   </span>
                 </div>
                 <div className="pay-confirm__success-row pay-confirm__success-row--amount">
@@ -650,7 +841,7 @@ const Order = () => {
               </div>
 
               <p className="pay-confirm__success-redirect">
-                Bạn sẽ được chuyển sang trang biên lai thanh toán trong giây lát...
+                Ban se duoc chuyen sang cong thanh toan {selectedOnlineChannel.providerLabel} trong giay lat...
               </p>
             </div>
           ) : null}
@@ -665,7 +856,7 @@ const Order = () => {
         <Header />
         <div className="order-page order-page--state">
           <div className="order-page__state-card">
-            <p className="order-page__state-text">Dang tai...</p>
+            <p className="order-page__state-text">Đang tải...</p>
           </div>
         </div>
         <Footer />
@@ -679,8 +870,8 @@ const Order = () => {
         <Header />
         <div className="order-page order-page--state">
           <div className="order-page__state-card order-page__state-card--empty">
-            <h2 className="order-page__state-title">Khong co don hang nao</h2>
-            <p className="order-page__state-desc">Hay chon san pham tu gio hang de tiep tuc.</p>
+            <h2 className="order-page__state-title">Không có đơn hàng nào</h2>
+            <p className="order-page__state-desc">Hãy chọn sản phẩm từ giỏ hàng để tiếp tục.</p>
           </div>
         </div>
         <Footer />
@@ -699,16 +890,16 @@ const Order = () => {
       <div className="order-body order-page">
         <div className="order-page__inner">
           <div className="order-layout">
-            <section className="order-details" aria-label="San pham trong don">
+            <section className="order-details" aria-label="Sản phẩm trong đơn">
               <header className="order-details__head">
-                <span className="order-details__badge">San pham da chon</span>
-                <span className="order-details__count">{lineItems.length} mat hang</span>
+                <span className="order-details__badge">Sản phẩm đã chọn</span>
+                <span className="order-details__count">{lineItems.length} mặt hàng</span>
               </header>
               {lineItems.map((item, index) => (
                 <article key={item.id} className="order-item">
                   <div className="order-item__media">
                     <div className="order-item__thumb">
-                      <img src={item.image} alt={item.title || "San pham"} className="order-item-image" />
+                      <img src={item.image} alt={item.title || "Sản phẩm"} className="order-item-image" />
                     </div>
                   </div>
                   <div className="order-item__body">
@@ -716,7 +907,7 @@ const Order = () => {
                       <h3 className="order-item__title">{formatTitle(item.title)}</h3>
                       <div className="order-item__meta">
                         <div className="order-item__price-row">
-                          <span className="order-item__price-label">Don gia</span>
+                          <span className="order-item__price-label">Đơn giá</span>
                           <span className="order-item__price">
                             <strong className="order-item__price-num">
                               {formatMoney(item.price)}
@@ -724,22 +915,22 @@ const Order = () => {
                             </strong>
                           </span>
                         </div>
-                        <span className="order-item__discount-note">Giam gia: {item.discountPercent}%</span>
+                        <span className="order-item__discount-note">Giảm giá: {item.discountPercent}%</span>
                       </div>
                     </div>
-                    <div className="order-item__subtotal" aria-label="Thanh tien dong">
-                      <span className="order-item__subtotal-label">Thanh tien</span>
+                    <div className="order-item__subtotal" aria-label="Thành tiền dòng">
+                      <span className="order-item__subtotal-label">Thành tiền</span>
                       <span className="order-item__subtotal-value">
                         {formatMoney(item.price * item.quantity)} <span className="order-item__currency">VND</span>
                       </span>
                     </div>
                     <div className="order-item__actions">
-                      <div className="order-item__stepper" role="group" aria-label="So luong">
+                      <div className="order-item__stepper" role="group" aria-label="Số lượng">
                         <button
                           type="button"
                           className="order-item__qty-btn"
                           onClick={() => handleDecreaseQuantity(index)}
-                          aria-label="Giam so luong"
+                          aria-label="Giảm số lượng"
                         >
                           −
                         </button>
@@ -750,7 +941,7 @@ const Order = () => {
                           type="button"
                           className="order-item__qty-btn"
                           onClick={() => handleIncreaseQuantity(index)}
-                          aria-label="Tang so luong"
+                          aria-label="Tăng số lượng"
                         >
                           +
                         </button>
@@ -759,7 +950,7 @@ const Order = () => {
                         <span className="order-item__remove-icon" aria-hidden="true">
                           ×
                         </span>
-                        <span className="order-item__remove-label">Xoa</span>
+                        <span className="order-item__remove-label">Xóa</span>
                       </button>
                     </div>
                   </div>
@@ -767,13 +958,13 @@ const Order = () => {
               ))}
             </section>
 
-            <aside className="user-info user-panel" aria-label="Thong tin giao hang">
-              <h2 className="user-panel__title">Thong tin nguoi dung</h2>
-              <p className="user-panel__lead">Dien thong tin nhan hang chinh xac de giao hang nhanh hon.</p>
+            <aside className="user-info user-panel" aria-label="Thông tin giao hàng">
+              <h2 className="user-panel__title">Thông tin người dùng</h2>
+              <p className="user-panel__lead">Điền thông tin nhận hàng chính xác để giao hàng nhanh hơn.</p>
 
               <div className="user-panel__field">
                 <label className="user-panel__label" htmlFor="order-name">
-                  Ten
+                  Tên
                 </label>
                 <input
                   id="order-name"
@@ -801,7 +992,7 @@ const Order = () => {
               </div>
               <div className="user-panel__field">
                 <label className="user-panel__label" htmlFor="order-phone">
-                  So dien thoai
+                  Số điện thoại
                 </label>
                 <input
                   id="order-phone"
@@ -831,32 +1022,15 @@ const Order = () => {
                         value={provinceCode}
                         onChange={(e) => handleProvinceChange(e.target.value)}
                         className="user-info-input user-panel__input user-panel__select"
+                        disabled={provinceLoading}
                         required
                       >
-                        <option value="">Chọn Tỉnh / Thành phố</option>
-                        {VN_LOCATION_DATA.map((province) => (
+                        <option value="">
+                          {provinceLoading ? "Đang tải Tỉnh / Thành phố..." : "Chọn Tỉnh / Thành phố"}
+                        </option>
+                        {provinces.map((province) => (
                           <option key={province.code} value={province.code}>
                             {province.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="user-panel__address-cell">
-                      <label className="user-panel__sublabel" htmlFor="order-district">
-                        Quận / Huyện
-                      </label>
-                      <select
-                        id="order-district"
-                        value={districtCode}
-                        onChange={(e) => handleDistrictChange(e.target.value)}
-                        className="user-info-input user-panel__input user-panel__select"
-                        disabled={!provinceCode}
-                        required
-                      >
-                        <option value="">{provinceCode ? "Chọn Quận / Huyện" : "Chọn Tỉnh / Thành trước"}</option>
-                        {districtOptions.map((district) => (
-                          <option key={district.code} value={district.code}>
-                            {district.name}
                           </option>
                         ))}
                       </select>
@@ -867,19 +1041,26 @@ const Order = () => {
                       </label>
                       <select
                         id="order-ward"
-                        value={wardName}
+                        value={wardCode}
                         onChange={(e) => {
-                          setWardName(e.target.value);
+                          setWardCode(e.target.value);
                           setAddressError("");
+                          setLocationError("");
                         }}
                         className="user-info-input user-panel__input user-panel__select"
-                        disabled={!districtCode}
+                        disabled={!provinceCode || wardLoading}
                         required
                       >
-                        <option value="">{districtCode ? "Chọn Phường / Xã" : "Chọn Quận / Huyện trước"}</option>
+                        <option value="">
+                          {!provinceCode
+                            ? "Chọn Tỉnh / Thành trước"
+                            : wardLoading
+                              ? "Đang tải Phường / Xã..."
+                              : "Chọn Phường / Xã"}
+                        </option>
                         {wardOptions.map((ward) => (
-                          <option key={ward} value={ward}>
-                            {ward}
+                          <option key={ward.code ?? ward.name} value={ward.code ?? ward.name}>
+                            {ward.name}
                           </option>
                         ))}
                       </select>
@@ -895,6 +1076,7 @@ const Order = () => {
                         onChange={(e) => {
                           setAddressDetail(e.target.value);
                           setAddressError("");
+                          setLocationError("");
                         }}
                         className="user-info-input user-panel__input"
                         placeholder="Số nhà, tên đường, tòa nhà..."
@@ -912,6 +1094,11 @@ const Order = () => {
                   {addressError ? (
                     <p className="user-panel__address-error" role="alert">
                       {addressError}
+                    </p>
+                  ) : null}
+                  {!addressError && locationError ? (
+                    <p className="user-panel__address-error" role="alert">
+                      {locationError}
                     </p>
                   ) : null}
                 </div>
@@ -1031,8 +1218,7 @@ const Order = () => {
                   </span>
                   <h3 className="payment-method__title">Phương thức thanh toán</h3>
                   <p className="payment-method__subtitle">
-                    Chọn thanh toán khi nhận hàng hoặc thanh toán trực tuyến (luồng demo, không trừ tiền
-                    thật).
+                    Chọn thanh toán khi nhận hàng hoặc thanh toán online qua VNPay sandbox hoặc MoMo.
                   </p>
                 </div>
                 <div className="payment-method__options" role="radiogroup" aria-label="Phương thức thanh toán">
@@ -1070,53 +1256,44 @@ const Order = () => {
                 ) : (
                   <div className="payment-online-panel" role="region" aria-label="Cấu hình thanh toán online">
                     <div className="payment-online-panel__stepbar" aria-hidden="true">
-                      <span className="payment-online-panel__step-pill">Bước 2</span>
+                        <span className="payment-online-panel__step-pill">Bước 2</span>
                       <span className="payment-online-panel__step-line" />
                     </div>
                     <div className="payment-online-panel__head">
                       <div>
-                        <p className="payment-online-panel__eyebrow">Kênh thanh toán (demo)</p>
-                        <p className="payment-online-panel__title">Chọn cách bạn muốn thanh toán</p>
-                        <p className="payment-online-panel__lead">
-                          Đây chỉ là lựa chọn giao diện để minh họa. Bước xác nhận cuối cùng sẽ mở sau khi
-                          bạn nhấn nút ở phần tóm tắt bên dưới.
+                        <p className="payment-online-panel__eyebrow">Cong thanh toan</p>
+                        <p className="payment-online-panel__title">
+                          Thanh toan qua {selectedOnlineChannel.providerLabel}
                         </p>
                       </div>
                       <div className="payment-online-panel__badges" aria-hidden="true">
-                        <span className="payment-online-panel__badge">Luồng demo</span>
+                        <span className="payment-online-panel__badge">
+                          {selectedOnlineChannel.providerLabel}
+                        </span>
                         <span className="payment-online-panel__badge payment-online-panel__badge--gold">
-                          Không cổng thật
+                          {selectedOnlineChannel.id === "momo" ? "Test" : "Sandbox"}
                         </span>
                       </div>
                     </div>
-                    <p className="payment-online-panel__pick-label">Chọn một kênh (ô vuông có thể bấm)</p>
-                    <div className="payment-online-panel__grid" role="group" aria-label="Kênh thanh toán demo">
-                      {MOCK_PAY_CHANNELS.map((ch) => (
+                    <p className="payment-online-panel__pick-label">Kenh duoc ho tro hien tai</p>
+                    <div className="payment-online-panel__grid" role="group" aria-label="Kenh thanh toan online">
+                      {ONLINE_PAY_CHANNELS.map((channel) => (
                         <button
-                          key={ch.id}
+                          key={channel.id}
                           type="button"
                           className={`payment-online-panel__tile${
-                            mockPayChannel === ch.id ? " payment-online-panel__tile--active" : ""
+                            selectedOnlineProvider === channel.id ? " payment-online-panel__tile--active" : ""
                           }`}
-                          onClick={() => setMockPayChannel(ch.id)}
-                          aria-pressed={mockPayChannel === ch.id}
+                          onClick={() => setSelectedOnlineProvider(channel.id)}
+                          aria-pressed={selectedOnlineProvider === channel.id}
                         >
-                          <span className="payment-online-panel__tile-icon" aria-hidden="true">
-                            {ch.icon}
+                          <span className={paymentChannelIconClass(channel)} aria-hidden="true">
+                            {channel.icon}
                           </span>
-                          <span className="payment-online-panel__tile-label">{ch.label}</span>
+                          <span className="payment-online-panel__tile-label">{channel.label}</span>
                         </button>
                       ))}
                     </div>
-                    <ul className="payment-online-panel__trust" aria-label="Lưu ý an toàn (demo)">
-                      <li>Giao dịch được mã hóa trong luồng demo — không kết nối cổng thanh toán thật.</li>
-                      <li>Hệ thống không lưu thông tin thẻ, ví hoặc mật khẩu thanh toán.</li>
-                      <li>Bạn xác nhận thanh toán một lần nữa trong cửa sổ tiếp theo trước khi hoàn tất đơn.</li>
-                    </ul>
-                    <p className="payment-online-panel__mock-note">
-                      Minh họa giao diện — không trừ tiền thật. Luồng đặt hàng và API giữ nguyên như phiên bản
-                      hiện tại.
-                    </p>
                   </div>
                 )}
               </div>
@@ -1141,14 +1318,16 @@ const Order = () => {
                   </h2>
                   <p className="order-summary__sub">
                     {isOnlinePayment
-                      ? "Kiểm tra phương thức, kênh demo và tổng tiền trước khi mở bước xác nhận thanh toán."
+                      ? `Kiem tra phuong thuc, tong tien va mo phien thanh toan ${selectedOnlineChannel.providerLabel}.`
                       : "Kiểm tra giá và thông tin giao hàng trước khi đặt hàng."}
                   </p>
                   {isOnlinePayment ? (
                     <div className="order-summary__trust-strip" aria-hidden="true">
-                      <span className="order-summary__trust-pill">Xác nhận hai lần (demo)</span>
+                      <span className="order-summary__trust-pill">
+                        Redirect den {selectedOnlineChannel.providerLabel}
+                      </span>
                       <span className="order-summary__trust-pill order-summary__trust-pill--emph">
-                        Không trừ tiền thật
+                        {selectedOnlineChannel.id === "momo" ? "Test" : "Sandbox"}
                       </span>
                     </div>
                   ) : null}
@@ -1157,14 +1336,16 @@ const Order = () => {
                   <div className="order-summary__row order-summary__row--pay-method">
                     <span className="order-summary__label">Phương thức thanh toán</span>
                     <span className="order-summary__value order-summary__value--strong">
-                      {isOnlinePayment ? "Thanh toán online (demo)" : "Thanh toán khi nhận hàng (COD)"}
+                      {isOnlinePayment
+                        ? `Thanh toan online (${selectedOnlineChannel.providerLabel})`
+                        : "Thanh toán khi nhận hàng (COD)"}
                     </span>
                   </div>
                   {isOnlinePayment ? (
                     <div className="order-summary__row order-summary__row--pay-channel">
-                      <span className="order-summary__label">Kênh đã chọn (demo)</span>
+                      <span className="order-summary__label">Kenh da chon</span>
                       <span className="order-summary__value order-summary__value--strong">
-                        {selectedMockChannel.label}
+                        {selectedOnlineChannel.label}
                       </span>
                     </div>
                   ) : null}
@@ -1192,7 +1373,7 @@ const Order = () => {
                       </div>
                       <div className="order-summary__row order-summary__row--soft order-summary__row--trust-text">
                         <span className="order-summary__label order-summary__label--trust">
-                          Giao dịch được mã hóa (demo)
+                          Ket qua duoc doi soat qua callback
                         </span>
                         <span className="order-summary__value order-summary__value--ok">✓</span>
                       </div>
@@ -1218,7 +1399,7 @@ const Order = () => {
                   >
                     {canSubmitCheckout
                       ? isOnlinePayment
-                        ? "Sẵn sàng: có thể mở bước xác nhận thanh toán online."
+                        ? `San sang: co the tao giao dich va chuyen sang ${selectedOnlineChannel.providerLabel}.`
                         : "Sẵn sàng: có thể đặt hàng."
                       : "Chưa đủ điều kiện: hoàn thành địa chỉ, thông tin nhận hàng và voucher (nếu nhập)."}
                   </div>
@@ -1231,7 +1412,7 @@ const Order = () => {
               >
                 <p className="order-summary__cta-note">
                   {isOnlinePayment
-                    ? "Mở cửa sổ xác nhận thanh toán demo — đơn chỉ được ghi nhận sau khi bạn xác nhận ở bước đó."
+                    ? `Mo buoc xac nhan cuoi, sau do he thong se redirect sang ${selectedOnlineChannel.redirectLabel}.`
                     : "Ghi nhận đơn COD và chuyển tới trang cá nhân sau khi thành công."}
                 </p>
                 <button

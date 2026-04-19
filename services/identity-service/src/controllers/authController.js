@@ -16,23 +16,8 @@ const refreshToken = async (req, res) => {
   return sendServiceResult(res, result);
 };
 
-const verifyAccount = async (req, res) => {
-  const result = await authService.verifyAccount(req.body);
-  return sendServiceResult(res, result);
-};
-
 const googleLogin = async (req, res) => {
   const result = await authService.googleLogin({ payload: req.body, config: req.app.locals.config });
-  return sendServiceResult(res, result);
-};
-
-const checkEmail = async (req, res) => {
-  const result = await authService.checkPendingEmail({ email: req.body.email });
-  return sendServiceResult(res, result);
-};
-
-const resendVerification = async (req, res) => {
-  const result = await authService.resendVerification({ email: req.body.email, config: req.app.locals.config });
   return sendServiceResult(res, result);
 };
 
@@ -41,13 +26,16 @@ const forgotPassword = async (req, res) => {
   return sendServiceResult(res, result);
 };
 
+const resetPassword = async (req, res) => {
+  const result = await authService.resetPassword(req.body);
+  return sendServiceResult(res, result);
+};
+
 module.exports = {
   register,
   login,
   refreshToken,
-  verifyAccount,
   googleLogin,
-  checkEmail,
-  resendVerification,
   forgotPassword,
+  resetPassword,
 };

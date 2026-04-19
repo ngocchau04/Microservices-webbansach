@@ -6,33 +6,17 @@ const buildRewriteRules = () => [
     target: () => ({ service: "identity", path: "/refresh-token" }),
   },
   {
-    pattern: /^\/api\/auth\/verify-account\/?$/,
-    target: () => ({ service: "identity", path: "/verify-account" }),
-  },
-  {
-    pattern: /^\/api\/auth\/verify\/?$/,
-    target: () => ({ service: "identity", path: "/verify" }),
-  },
-  {
     pattern: /^\/api\/auth\/google-login\/?$/,
     target: () => ({ service: "identity", path: "/google-login" }),
   },
   { pattern: /^\/api\/auth\/me\/?$/, target: () => ({ service: "identity", path: "/me" }) },
   {
-    pattern: /^\/api\/auth\/check-email\/?$/,
-    target: () => ({ service: "identity", path: "/check-email" }),
-  },
-  {
-    pattern: /^\/api\/auth\/resend-verification\/?$/,
-    target: () => ({ service: "identity", path: "/resend-verification" }),
-  },
-  {
-    pattern: /^\/api\/auth\/resend\/?$/,
-    target: () => ({ service: "identity", path: "/resend" }),
-  },
-  {
     pattern: /^\/api\/auth\/forgot-password\/?$/,
     target: () => ({ service: "identity", path: "/forgot-password" }),
+  },
+  {
+    pattern: /^\/api\/auth\/reset-password\/?$/,
+    target: () => ({ service: "identity", path: "/reset-password" }),
   },
   {
     pattern: /^\/api\/auth\/profile\/(name|phone|password)\/?$/,

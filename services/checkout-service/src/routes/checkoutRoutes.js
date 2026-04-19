@@ -60,6 +60,11 @@ const createCheckoutRoutes = (config) => {
 
   router.post("/payments/create", requireAuth, asyncHandler(paymentController.createPayment));
   router.post("/payments/webhook", asyncHandler(paymentController.paymentWebhook));
+  router.get("/payments/vnpay/return", asyncHandler(paymentController.vnpayReturn));
+  router.get("/payments/vnpay/demo-return", asyncHandler(paymentController.vnpayDemoReturn));
+  router.get("/payments/momo/return", asyncHandler(paymentController.momoReturn));
+  router.get("/payments/momo/demo-return", asyncHandler(paymentController.momoDemoReturn));
+  router.post("/payments/momo/ipn", asyncHandler(paymentController.momoIpn));
   router.get("/payments/:id", requireAuth, asyncHandler(paymentController.getPaymentById));
 
   // Legacy compatibility aliases used by existing UI

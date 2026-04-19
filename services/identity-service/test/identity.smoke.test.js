@@ -6,7 +6,6 @@ process.env.MONGO_URI = "mongodb://127.0.0.1:27017";
 process.env.IDENTITY_DB_NAME = "book_identity_test";
 
 const users = [];
-const pendingUsers = [];
 let idCounter = 0;
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -95,43 +94,7 @@ const mockUserModel = {
   ),
 };
 
-const mockPendingUserModel = {
-  findOne: jest.fn(async (query, projection) => {
-    const found = pendingUsers.find((user) => matchesQuery(user, query));
-    if (!found) {
-      return null;
-    }
-
-    if (projection && projection.password === 0) {
-      const { password, ...safe } = found;
-      return buildDoc(safe);
-    }
-
-    return buildDoc(found);
-  }),
-
-  create: jest.fn(async (payload) => {
-    const newPending = {
-      _id: `pending_${++idCounter}`,
-      ...clone(payload),
-    };
-
-    pendingUsers.push(newPending);
-    return buildDoc(newPending);
-  }),
-
-  deleteOne: jest.fn(async (query) => {
-    const index = pendingUsers.findIndex((item) => matchesQuery(item, query));
-    if (index >= 0) {
-      pendingUsers.splice(index, 1);
-    }
-
-    return { deletedCount: index >= 0 ? 1 : 0 };
-  }),
-};
-
 jest.mock("../src/models/User", () => mockUserModel);
-jest.mock("../src/models/PendingUser", () => mockPendingUserModel);
 
 const { createApp } = require("../src/index");
 
@@ -140,12 +103,11 @@ describe("identity-service smoke flow", () => {
 
   beforeEach(() => {
     users.length = 0;
-    pendingUsers.length = 0;
     idCounter = 0;
     jest.clearAllMocks();
   });
 
-  test("register -> verify -> login -> refresh -> me", async () => {
+  test("register -> login -> refresh -> me", async () => {
     const registerPayload = {
       name: "Test User",
       sdt: "0900000000",
@@ -159,14 +121,6 @@ describe("identity-service smoke flow", () => {
       .expect(200);
 
     expect(registerRes.body.success).toBe(true);
-
-    const pending = pendingUsers.find((item) => item.email === registerPayload.email);
-    expect(pending).toBeTruthy();
-
-    await request(app)
-      .post("/verify-account")
-      .send({ email: registerPayload.email, number: pending.verificationCode })
-      .expect(200);
 
     const loginRes = await request(app)
       .post("/login")

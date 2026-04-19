@@ -87,7 +87,7 @@ const getProductById = async ({ productId }) => {
     };
   }
 
-  const product = await Product.findById(productId);
+  const product = await Product.findById(productId).lean();
   if (!product) {
     return {
       ok: false,

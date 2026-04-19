@@ -4,7 +4,7 @@ import HomePage from "./pages/HomePage";
 import BookDetail from "./pages/BookDetail";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
-import VerifyAccount from "./pages/VerifyAccount";
+import ForgotPasswordPage from "./pages/ForgotPassword";
 import ListProduct from "./pages/ListProduct";
 import Order from "./pages/Order";
 import VoucherPage from "./pages/VoucherPage";
@@ -51,11 +51,10 @@ function App() {
           <Route path="/book/:id" element={<BookDetail />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/verify" element={<VerifyAccount />} />
           <Route path="/list" element={<ListProduct />} />
           <Route path="/authors" element={<FeaturedAuthors />} />
           <Route path="/order" element={<Order />} />
-          <Route path="/forgot-password" element={<VerifyAccount isresetpass={true} />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/voucher" element={<VoucherPage />} />
           <Route path="/payment" element={<PaymentPage />} />
           {user && user.role === "admin" ? <Route path="/admin" element={<Admin />} /> : null}

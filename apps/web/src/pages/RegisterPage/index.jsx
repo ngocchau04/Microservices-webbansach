@@ -22,8 +22,10 @@ function RegisterPage() {
       const response = await registerApi(formData);
       if (response.data.status === "success") {
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
         setUser(null);
-        navigate('/verify');
+        alert(response.data.message || "Registration successful");
+        navigate('/login');
       } else {
         alert(response.data.message || "Registration failed");
       }

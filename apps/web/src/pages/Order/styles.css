@@ -1217,6 +1217,12 @@
   opacity: 0.9;
 }
 
+.payment-online-panel__tile-icon--wordmark {
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
 .payment-online-panel__tile-label {
   font-size: 0.72rem;
   font-weight: 700;
@@ -1820,6 +1826,12 @@
   color: var(--bookie-red);
 }
 
+.pay-confirm__method-icon--wordmark {
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
 .pay-confirm__method-copy {
   display: flex;
   flex-direction: column;
@@ -2145,6 +2157,12 @@
   font-size: 1.75rem;
   line-height: 1;
   color: var(--bookie-red);
+}
+
+.pay-confirm__orbit-icon--wordmark {
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .pay-confirm__bars {

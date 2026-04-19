@@ -1,14 +1,29 @@
-name: CI-CD Microservices
+name: Bookstore CI/CD
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
+      - develop
   pull_request:
-    branches: ["main"]
+    branches:
+      - main
+      - develop
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bookstore-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
 
 jobs:
   validate:
+    name: Validate Monorepo
     runs-on: ubuntu-latest
     services:
       mongodb:
@@ -33,24 +48,38 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/web/package-lock.json
+            apps/api-gateway/package-lock.json
+            services/identity-service/package-lock.json
+            services/catalog-service/package-lock.json
+            services/checkout-service/package-lock.json
+            services/media-service/package-lock.json
+            services/notification-service/package-lock.json
+            services/reporting-service/package-lock.json
+            services/support-service/package-lock.json
+            services/assistant-service/package-lock.json
 
       - name: Install active stack dependencies
         run: npm run ci:install:active
 
-      - name: Run thesis-critical core flows
+      - name: Run core service tests
         run: npm run ci:test:core
 
-      - name: Run full active service test suite
+      - name: Run full service test suite
         run: npm run ci:test:all
 
-      - name: Build web app
+      - name: Build frontend
         run: npm run build:web
 
-      - name: Validate micro compose config
+      - name: Validate Docker Compose
         run: npm run ci:compose:check
 
   docker-build:
+    name: Build Docker Images
     needs: validate
     runs-on: ubuntu-latest
     steps:
@@ -61,9 +90,15 @@ jobs:
         run: docker compose -f docker-compose.micro.yml build
 
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    name: Deploy To Self-Hosted Runner
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      vars.ENABLE_SELF_HOSTED_DEPLOY == 'true'
     needs: docker-build
     runs-on: self-hosted
+    environment:
+      name: production
     steps:
       - name: Checkout source
         uses: actions/checkout@v4

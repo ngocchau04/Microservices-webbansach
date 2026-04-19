@@ -35,17 +35,15 @@ const CardItem = ({ book }) => {
     rating: 4,
   };
 
-  const { _id, imgSrc, title, description, price, discount, soldCount, rating } = {
+  const { _id, imgSrc, title, price, discount, soldCount, rating } = {
     ...defaultItem,
     ...book,
   };
 
-  const priceAfterDiscount = (price) => {
-    return formatPrice(price);
-  };
+  const priceAfterDiscount = (value) => formatPrice(value);
 
-  const formatTitle = (title) => {
-    return title.length > 30 ? `${title.slice(0, 30)}...` : title;
+  const formatTitle = (value) => {
+    return value.length > 30 ? `${value.slice(0, 30)}...` : value;
   };
 
   const handleAddFavourite = async () => {
@@ -55,6 +53,7 @@ const CardItem = ({ book }) => {
         alert("Vui lòng đăng nhập để thêm sản phẩm vào danh sách yêu thích.");
         return;
       }
+
       const response = await toggleFavorite({ productId: _id });
 
       setUser((prevUser) => ({
@@ -77,10 +76,15 @@ const CardItem = ({ book }) => {
         alert("Vui lòng đăng nhập để xóa sản phẩm khỏi danh sách yêu thích.");
         return;
       }
-      // add popup confirm
-      if (!window.confirm("Bạn có chắc chắn muốn xóa sản phẩm này khỏi danh sách yêu thích?")) {
+
+      if (
+        !window.confirm(
+          "Bạn có chắc chắn muốn xóa sản phẩm này khỏi danh sách yêu thích?"
+        )
+      ) {
         return;
       }
+
       const response = await removeFavorite({ productId: _id });
 
       setUser((prevUser) => ({
@@ -172,9 +176,7 @@ const CardItem = ({ book }) => {
           />
         </div>
         <div className="book-price">
-          <p className="book-discount">
-            {discount > 0 ? `-${discount}%` : ""}
-          </p>
+          <p className="book-discount">{discount > 0 ? `-${discount}%` : ""}</p>
           <p>{priceAfterDiscount(price)}₫</p>
         </div>
         <p>Đã bán: {soldCount}</p>

@@ -1,10 +1,8 @@
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/User");
-const PendingUser = require("../models/PendingUser");
 const { signAccessToken, verifyAccessToken } = require("./tokenService");
 const { sendEmail } = require("./emailService");
-const { sendVerificationEmail } = require("./notificationClient");
 const {
   isEmail,
   hasMinLength,
@@ -42,9 +40,6 @@ const normalizeTenantId = (value, fallback = "public") => {
   return normalized;
 };
 
-const generateVerificationCode = () =>
-  `${Math.floor(Math.random() * 1000000)}`.padStart(6, "0");
-
 const validateRegisterInput = ({ name, email, password }) => {
   if (!hasMinLength(name, 2)) {
     return "Name must be at least 2 characters";
@@ -61,9 +56,10 @@ const validateRegisterInput = ({ name, email, password }) => {
   return null;
 };
 
-const register = async ({ payload, config }) => {
+const register = async ({ payload }) => {
   const { name, sdt = "", email, password } = payload;
   const validationError = validateRegisterInput({ name, email, password });
+  const normalizedEmail = String(email || "").trim().toLowerCase();
 
   if (validationError) {
     return {
@@ -74,183 +70,8 @@ const register = async ({ payload, config }) => {
     };
   }
 
-  const existingUser = await User.findOne({ email });
+  const existingUser = await User.findOne({ email: normalizedEmail });
   if (existingUser) {
-    return {
-      ok: false,
-      statusCode: 409,
-      message: "Email already exists",
-      code: "AUTH_EMAIL_EXISTS",
-      legacy: {
-        status: "failed",
-        message: "Email da ton tai",
-      },
-    };
-  }
-
-  const existingPending = await PendingUser.findOne({ email });
-  if (existingPending) {
-    return {
-      ok: false,
-      statusCode: 409,
-      message: "Email is pending verification",
-      code: "AUTH_EMAIL_PENDING_VERIFICATION",
-      legacy: {
-        status: "failed",
-        message: "Email da dang ky nhung chua duoc xac thuc",
-      },
-    };
-  }
-
-  const verificationCode = generateVerificationCode();
-  await PendingUser.create({
-    email,
-    name,
-    password,
-    sdt,
-    role: "user",
-    verificationCode,
-  });
-
-  await sendVerificationEmail({
-    config,
-    email,
-    name,
-    verificationCode,
-    idempotencyKey: `identity-register-${email.toLowerCase()}`,
-  });
-
-  return {
-    ok: true,
-    statusCode: 200,
-    data: { message: "Check your email to verify your account" },
-    legacy: {
-      status: "success",
-      message: "Kiem tra email de kich hoat tai khoan",
-    },
-  };
-};
-
-const checkPendingEmail = async ({ email }) => {
-  if (!isEmail(email)) {
-    return {
-      ok: false,
-      statusCode: 400,
-      message: "Email is invalid",
-      code: "AUTH_VALIDATION_ERROR",
-    };
-  }
-
-  const pending = await PendingUser.findOne({ email }, { password: 0 });
-  if (pending) {
-    return {
-      ok: true,
-      statusCode: 200,
-      data: { user: pending },
-      legacy: { status: "success", user: pending },
-    };
-  }
-
-  const user = await User.findOne({ email }, { password: 0 });
-  if (user) {
-    return {
-      ok: false,
-      statusCode: 409,
-      message: "Email already registered. Please login.",
-      code: "AUTH_EMAIL_EXISTS",
-      legacy: {
-        status: "failed",
-        message: "Email da dang ky. Hay dang nhap.",
-      },
-    };
-  }
-
-  return {
-    ok: false,
-    statusCode: 404,
-    message: "Email not found",
-    code: "AUTH_EMAIL_NOT_FOUND",
-    legacy: { status: "failed", message: "Email not found" },
-  };
-};
-
-const resendVerification = async ({ email, config }) => {
-  if (!isEmail(email)) {
-    return {
-      ok: false,
-      statusCode: 400,
-      message: "Email is invalid",
-      code: "AUTH_VALIDATION_ERROR",
-    };
-  }
-
-  const pending = await PendingUser.findOne({ email });
-  if (!pending) {
-    return {
-      ok: false,
-      statusCode: 404,
-      message: "Email not found",
-      code: "AUTH_EMAIL_NOT_FOUND",
-      legacy: { status: "failed", message: "Email not found" },
-    };
-  }
-
-  await sendVerificationEmail({
-    config,
-    email,
-    name: pending.name,
-    verificationCode: pending.verificationCode,
-    idempotencyKey: `identity-resend-${email.toLowerCase()}-${pending.verificationCode}`,
-  });
-
-  return {
-    ok: true,
-    statusCode: 200,
-    data: { message: "Verification code sent" },
-    legacy: {
-      status: "success",
-      message: "Ma xac thuc da duoc gui",
-    },
-  };
-};
-
-const verifyAccount = async ({ email, number, code }) => {
-  if (!isEmail(email)) {
-    return {
-      ok: false,
-      statusCode: 400,
-      message: "Email is invalid",
-      code: "AUTH_VALIDATION_ERROR",
-    };
-  }
-
-  const verificationCode = `${number || code || ""}`.trim();
-  if (!verificationCode) {
-    return {
-      ok: false,
-      statusCode: 400,
-      message: "Verification code is required",
-      code: "AUTH_VALIDATION_ERROR",
-    };
-  }
-
-  const pending = await PendingUser.findOne({ email, verificationCode });
-  if (!pending) {
-    return {
-      ok: false,
-      statusCode: 400,
-      message: "Invalid verification code",
-      code: "AUTH_INVALID_VERIFICATION_CODE",
-      legacy: {
-        status: "failed",
-        message: "Ma xac minh chua chinh xac",
-      },
-    };
-  }
-
-  const existingUser = await User.findOne({ email: pending.email });
-  if (existingUser) {
-    await PendingUser.deleteOne({ _id: pending._id });
     return {
       ok: false,
       statusCode: 409,
@@ -265,27 +86,29 @@ const verifyAccount = async ({ email, number, code }) => {
 
   await User.create({
     tenantId: normalizeTenantId("public"),
-    name: pending.name,
-    sdt: pending.sdt,
-    email: pending.email,
-    password: pending.password,
-    role: pending.role || "user",
+    email: normalizedEmail,
+    name,
+    password,
+    sdt,
+    role: "user",
+    status: "active",
+    isActive: true,
+    authProvider: "local",
   });
-  await PendingUser.deleteOne({ _id: pending._id });
 
   return {
     ok: true,
     statusCode: 200,
-    data: { message: "Account verified successfully" },
+    data: { message: "Account created successfully. Please login." },
     legacy: {
       status: "success",
-      message: "Tai khoan da duoc kich hoat",
+      message: "Dang ky thanh cong. Hay dang nhap.",
     },
   };
 };
 
 const login = async ({ username, email, password, config }) => {
-  const loginEmail = (username || email || "").trim();
+  const loginEmail = (username || email || "").trim().toLowerCase();
 
   if (!loginEmail || !password) {
     return {
@@ -382,7 +205,9 @@ const refreshToken = async ({ token, config }) => {
 };
 
 const forgotPassword = async ({ email, config }) => {
-  if (!isEmail(email)) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+
+  if (!isEmail(normalizedEmail)) {
     return {
       ok: false,
       statusCode: 400,
@@ -391,7 +216,7 @@ const forgotPassword = async ({ email, config }) => {
     };
   }
 
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ email: normalizedEmail });
   if (!user) {
     return {
       ok: false,
@@ -404,7 +229,7 @@ const forgotPassword = async ({ email, config }) => {
 
   await sendEmail({
     config,
-    to: email,
+    to: normalizedEmail,
     subject: "Your password",
     text: `Your password is: ${user.password}`,
   });
@@ -416,6 +241,60 @@ const forgotPassword = async ({ email, config }) => {
     legacy: {
       status: "success",
       message: "Mat khau da duoc gui den email cua ban",
+    },
+  };
+};
+
+const resetPassword = async ({ email, newPassword, confirmPassword }) => {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+
+  if (!isEmail(normalizedEmail)) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "Email is invalid",
+      code: "AUTH_VALIDATION_ERROR",
+    };
+  }
+
+  if (!hasMinLength(newPassword, 6)) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "New password must be at least 6 characters",
+      code: "AUTH_VALIDATION_ERROR",
+    };
+  }
+
+  if (newPassword !== confirmPassword) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "Password confirmation does not match",
+      code: "AUTH_VALIDATION_ERROR",
+    };
+  }
+
+  const user = await User.findOne({ email: normalizedEmail });
+  if (!user) {
+    return {
+      ok: false,
+      statusCode: 404,
+      message: "Email does not exist",
+      code: "AUTH_EMAIL_NOT_FOUND",
+      legacy: { status: "fail", message: "Email khong ton tai" },
+    };
+  }
+
+  await User.findOneAndUpdate({ email: normalizedEmail }, { password: newPassword }, { new: true });
+
+  return {
+    ok: true,
+    statusCode: 200,
+    data: { message: "Password updated successfully. Please login." },
+    legacy: {
+      status: "success",
+      message: "Mat khau da duoc cap nhat. Hay dang nhap.",
     },
   };
 };
@@ -880,12 +759,10 @@ const deleteUserByAdmin = async ({ userId }) => {
 
 module.exports = {
   register,
-  checkPendingEmail,
-  resendVerification,
-  verifyAccount,
   login,
   refreshToken,
   forgotPassword,
+  resetPassword,
   googleLogin,
   getCurrentUser,
   updateCurrentUser,
