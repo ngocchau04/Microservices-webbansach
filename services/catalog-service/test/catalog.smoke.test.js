@@ -60,6 +60,13 @@ const matchField = (itemValue, queryValue) => {
 };
 
 const matchesQuery = (item, query = {}) => {
+  if (query.$and && Array.isArray(query.$and)) {
+    const andPassed = query.$and.every((condition) => matchesQuery(item, condition));
+    if (!andPassed) {
+      return false;
+    }
+  }
+
   if (query.$or && Array.isArray(query.$or)) {
     const orPassed = query.$or.some((condition) => matchesQuery(item, condition));
     if (!orPassed) {
@@ -68,7 +75,7 @@ const matchesQuery = (item, query = {}) => {
   }
 
   return Object.entries(query)
-    .filter(([key]) => key !== "$or")
+    .filter(([key]) => key !== "$or" && key !== "$and")
     .every(([key, value]) => matchField(item[key], value));
 };
 
