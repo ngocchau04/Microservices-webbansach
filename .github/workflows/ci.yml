@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate Active Stack
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd="mongosh --eval 'db.adminCommand({ ping: 1 })'"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=5s
+    env:
+      NODE_ENV: test
+      MONGO_URI: mongodb://localhost:27017
+      JWT_SECRET: ci_test_secret
+      SECRET_KEY: ci_test_secret
+      DEFAULT_TENANT_ID: public
+      PUBLIC_TENANT_ID: public
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/**/package-lock.json
+            services/**/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install active stack dependencies
+        run: npm run ci:install:active
+
+      - name: Run thesis-critical core flows
+        run: npm run ci:test:core
+
+      - name: Run full active service test suite
+        run: npm run ci:test:all
+
+      - name: Build web app
+        run: npm run build:web
+
+      - name: Validate docker compose config
+        run: npm run ci:compose:check
+
+  docker-smoke-build:
+    name: Docker Compose Build
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Build active stack images
+        run: docker compose -f docker-compose.micro.yml build
