@@ -16,11 +16,12 @@ const corpusSchema = new mongoose.Schema(
     metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
     indexedAt: { type: Date, default: Date.now },
     normalizedText: { type: String, default: "", index: true },
+    embedding: { type: [Number], default: undefined },
   },
   { versionKey: false }
 );
 
-corpusSchema.index({ title: "text", body: "text", keywords: "text" });
+corpusSchema.index({ tenantId: 1, title: "text", body: "text", keywords: "text" });
 corpusSchema.index({ tenantId: 1, sourceType: 1, refId: 1 });
 corpusSchema.index({ tenantId: 1, sourceType: 1 });
 

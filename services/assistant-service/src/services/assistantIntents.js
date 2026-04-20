@@ -13,6 +13,7 @@ const detectIntentDetailed = (raw = "", options = {}) => {
     same_author: 0,
     same_category: 0,
     cheaper: 0,
+    catalog_ranking: 0,
     related_next: 0,
     recommend: 0,
     search: 0.8,
@@ -29,6 +30,14 @@ const detectIntentDetailed = (raw = "", options = {}) => {
   }
   if (concepts.has("cheaper")) {
     scores.cheaper += 8;
+  }
+  if (
+    concepts.has("sort_price_asc") ||
+    concepts.has("sort_price_desc") ||
+    concepts.has("sort_popularity_desc") ||
+    concepts.has("sort_date_desc")
+  ) {
+    scores.catalog_ranking += 12;
   }
   if (concepts.has("related_next")) {
     scores.related_next += 8;

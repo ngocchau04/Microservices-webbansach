@@ -33,6 +33,7 @@ const getEnvConfig = () => ({
   reindexApiKey: process.env.ASSISTANT_REINDEX_API_KEY || "",
   defaultTenantId: normalizeTenantId(process.env.DEFAULT_TENANT_ID || DEFAULT_TENANT_ID),
   publicTenantId: normalizeTenantId(process.env.PUBLIC_TENANT_ID || DEFAULT_TENANT_ID),
+  geminiApiKey: process.env.GEMINI_API_KEY || "",
 });
 
 module.exports = {

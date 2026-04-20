@@ -1,4 +1,4 @@
-const { retrieve, pickRecommendations, rankCatalogHybrid, mergeByRefId } = require("./retrievalService");
+const { retrieve, pickRecommendations, rankCatalogHybrid, mergeByRefId, findRankedCatalog } = require("./retrievalService");
 const {
   detectIntent,
   detectIntentDetailed,
@@ -24,6 +24,7 @@ const {
 const { CorpusDocument } = require("../models/CorpusDocument");
 const { normalizeTenantId } = require("./tenantContextService");
 const { buildAdminCopilotChatResult, isAdminCopilotContext } = require("./adminCopilotService");
+const catalogClient = require("../utils/catalogClient");
 
 const FALLBACK_MESSAGE =
   "Mình chưa đủ tự tin để trả lời chắc chắn từ dữ liệu Bookie hiện tại. Bạn có thể nói rõ hơn theo tác giả, thể loại, mức giá, hoặc mục tiêu học để mình gợi ý đúng hơn.";
@@ -94,9 +95,7 @@ const buildSessionHints = (recs, focusDoc) => {
 
 const composeMessage = ({ mainAnswer, whyExplanation, followUpChips }) => {
   let m = mainAnswer;
-  if (whyExplanation) {
-    m += `\n\n📌 Vì sao mình gợi ý: ${whyExplanation}`;
-  }
+  // Bỏ phần tự động nối whyExplanation vào tin nhắn chính trong môi trường deploy
   if (followUpChips && followUpChips.length) {
     m += `\n\n👉 Bạn có thể hỏi tiếp: ${followUpChips.map((c) => c.label).join(" · ")}`;
   }
@@ -213,7 +212,7 @@ const badgesFromSignals = (refId, signalsByRefId) => {
   return b;
 };
 
-const chat = async ({ message, context = {}, actor = null, tenantId = "public", config = {} }) => {
+const chatInternal = async ({ message, context = {}, actor = null, tenantId = "public", config = {} }) => {
   const scopedTenantId = normalizeTenantId(tenantId, config.defaultTenantId || "public");
   const trimmed = (message || "").trim();
   if (!trimmed) {
@@ -253,7 +252,7 @@ const chat = async ({ message, context = {}, actor = null, tenantId = "public", 
   const intent = intentInfo.intent || detectIntent(trimmed, { analysis: queryAnalysis, context });
   const policyHint = detectPolicyIntent(queryAnalysis);
   const wantsHumanSupport = detectHumanSupportIntent(queryAnalysis);
-  const { queryTokens, docs, retrievalMeta } = await retrieve(trimmed, {
+  const { queryTokens, queryEmbedding, docs, retrievalMeta } = await retrieve(trimmed, {
     analysis: queryAnalysis,
     context,
     tenantId: scopedTenantId,
@@ -411,8 +410,8 @@ const chat = async ({ message, context = {}, actor = null, tenantId = "public", 
     const why = explainMatch(trimmed, refDoc);
     const chips = defaultFollowUpChips().slice(0, 4);
     const main = refDoc
-      ? `Dưới đây là cách Bookie ghép gợi ý: retrieval từ khóa + đồ thị metadata (không dùng LLM/vector).`
-      : `Chưa có cuốn sách nào được chọn trong phiên để giải thích. Hãy hỏi gợi ý sách trước, hoặc bấm một thẻ sản phẩm.`;
+      ? `Dưới đây là một số thông tin chi tiết giúp bạn chọn sách:`
+      : `Chưa có cuốn sách nào được chọn để phân tích. Hãy hỏi về một tựa sách cụ thể nhé!`;
     const graphReasoningInfo = refDoc
       ? {
           pathsUsed: [
@@ -488,11 +487,12 @@ const chat = async ({ message, context = {}, actor = null, tenantId = "public", 
         pathDescription: `author:${ak} → (catalog cùng authorKey)`,
       };
     }
-    const signals = tagSignalsForMerged([], tr.docs, [], [], focusDoc.refId);
+    const signals = tagSignalsForMerged([], tr.docs, [], [], focusDoc?.refId);
     const ranked = rankCatalogHybrid(tr.docs, {
       queryTokens,
       concepts: queryAnalysis.concepts,
       signalsByRefId: signals,
+      queryEmbedding,
     });
     const top = ranked.slice(0, 4).map((x) => x.doc);
     const recs = top.map((d) =>
@@ -501,7 +501,7 @@ const chat = async ({ message, context = {}, actor = null, tenantId = "public", 
         badges: badgesFromSignals(d.refId, signals),
       })
     );
-    const main = `Một số sách cùng tác giả (theo đường đi ${RELATION_KINDS.AUTHORED_BY}):`;
+    const main = `Dưới đây là một số tác phẩm khác cùng tác giả mà bạn có thể yêu thích:`;
     const why = `Mình mở rộng từ cuốn bạn đang quan tâm theo quan hệ cùng tác giả (khóa “${ak}”), rồi xếp hạng từ khóa + đồ thị + soldCount.`;
     const chips = [
       { id: "same_category", label: "Cùng thể loại" },
@@ -580,11 +580,12 @@ const chat = async ({ message, context = {}, actor = null, tenantId = "public", 
         pathDescription: `category:${ck} → (catalog cùng categoryKey)`,
       };
     }
-    const signals = tagSignalsForMerged([], [], tr.docs, [], focusDoc.refId);
+    const signals = tagSignalsForMerged([], [], tr.docs, [], focusDoc?.refId);
     const ranked = rankCatalogHybrid(tr.docs, {
       queryTokens,
       concepts: queryAnalysis.concepts,
       signalsByRefId: signals,
+      queryEmbedding,
     });
     const top = ranked.slice(0, 4).map((x) => x.doc);
     const recs = top.map((d) =>
@@ -593,7 +594,7 @@ const chat = async ({ message, context = {}, actor = null, tenantId = "public", 
         badges: badgesFromSignals(d.refId, signals),
       })
     );
-    const main = `Gợi ý cùng thể loại (đường đi ${RELATION_KINDS.BELONGS_TO} → ${ck}):`;
+    const main = `Gợi ý các đầu sách cùng thể loại bạn đang quan tâm:`;
     const why = `Mình chọn các sách này vì chúng thuộc cùng thể loại “${ck}” và đang có mức bán tốt (soldCount) sau khi ghép điểm hybrid.`;
     const chips = [
       { id: "same_author", label: "Cùng tác giả" },
@@ -658,6 +659,7 @@ const chat = async ({ message, context = {}, actor = null, tenantId = "public", 
       concepts: queryAnalysis.concepts,
       signalsByRefId: signals,
       referencePrice: refPrice,
+      queryEmbedding,
     });
     const top = ranked.slice(0, 4).map((x) => x.doc);
     const recs = top.map((d) =>
@@ -668,8 +670,8 @@ const chat = async ({ message, context = {}, actor = null, tenantId = "public", 
     );
     const main =
       recs.length > 0
-        ? `Một số đầu rẻ hơn trong cùng thể loại (giá < ${formatPrice(refPrice)}):`
-        : `Không có đầu rẻ hơn rõ ràng trong kho đã chỉ mục (cùng thể loại).`;
+        ? `Các tựa sách cùng thể loại có mức giá tối ưu hơn (dưới ${formatPrice(refPrice)}):`
+        : `Hiện chưa tìm thấy tựa sách nào cùng thể loại có giá thấp hơn trong kho.`;
     const why = recs.length
       ? `Lọc theo quan hệ ${RELATION_KINDS.BELONGS_TO} → “${ck}”, áp dụng ràng buộc metadata.price < ${formatPrice(refPrice)}, rồi xếp hạng hybrid (bao gồm độ “mềm” giá).`
       : null;
@@ -749,6 +751,7 @@ const chat = async ({ message, context = {}, actor = null, tenantId = "public", 
       queryTokens,
       concepts: queryAnalysis.concepts,
       signalsByRefId: signals,
+      queryEmbedding,
     });
     const top = ranked.slice(0, 4).map((x) => x.doc);
     const recs = top.map((d) =>
@@ -759,8 +762,8 @@ const chat = async ({ message, context = {}, actor = null, tenantId = "public", 
     );
     const main =
       recs.length > 0
-        ? `Nếu bạn thích cuốn đang xem, có thể đọc tiếp các đầu liên quan (kết hợp ${RELATION_KINDS.AUTHORED_BY} + ${RELATION_KINDS.BELONGS_TO} + gợi ý tiếp trong nhóm):`
-        : `Chưa đủ dữ liệu liên quan trong kho đã chỉ mục. Thử hỏi tên sách cụ thể.`;
+        ? `Nếu bạn yêu thích cuốn này, có thể bạn sẽ muốn xem thêm các đầu sách liên quan:`
+        : `Bạn có thể thử hỏi về một chủ đề khác hoặc tên sách cụ thể nhé.`;
     const graphReasoningInfo = {
       pathsUsed: [...ta.steps, ...tc.steps, { note: inf.pathDescription }],
       focusEntity: `book:${fd.refId}`,
@@ -776,6 +779,68 @@ const chat = async ({ message, context = {}, actor = null, tenantId = "public", 
       recommendations: recs,
       sessionHints: buildSessionHints(top, fd),
       graphReasoningInfo,
+      fallback: recs.length === 0,
+    };
+    return {
+      ok: true,
+      statusCode: 200,
+      data: { ...payload, message: composeMessage(payload) },
+    };
+  }
+
+  /** ---------- Smart Filters (Cheapest, Expensive, Popular, Newest) ---------- */
+  if (intent === "catalog_ranking") {
+    const recDocs = await findRankedCatalog({
+      tenantId: scopedTenantId,
+      concepts: queryAnalysis.concepts,
+    });
+    const recs = recDocs.map((d) => {
+      let badge = BADGE.popular;
+      let reason = "Gợi ý hàng đầu theo tiêu chí của bạn.";
+      if (queryAnalysis.concepts.includes("sort_price_asc")) {
+        badge = "Giá tốt nhất";
+        reason = "Cuốn sách có mức giá cạnh tranh nhất trong kho.";
+      } else if (queryAnalysis.concepts.includes("sort_price_desc")) {
+        badge = "Cao cấp";
+        reason = "Tác phẩm giá trị nhất dành cho bạn.";
+      } else if (queryAnalysis.concepts.includes("sort_date_desc")) {
+        badge = "Mới về";
+        reason = "Sách vừa được cập nhật vào kho dữ liệu.";
+      } else if (queryAnalysis.concepts.includes("sort_popularity_desc")) {
+        badge = "Bán chạy";
+        reason = "Đang được rất nhiều độc giả quan tâm và chọn mua.";
+      }
+      return mapRecommendation(d, badge, {
+        reasonLine: reason,
+        badges: [badge],
+      });
+    });
+
+    let main = "";
+    if (queryAnalysis.concepts.includes("sort_price_asc")) {
+      main = "Đây là những lựa chọn tiết kiệm nhất giúp bạn tối ưu chi phí:";
+    } else if (queryAnalysis.concepts.includes("sort_price_desc")) {
+      main = "Nếu bạn tìm kiếm những ấn phẩm giá trị và chất lượng cao nhất, đây là gợi ý:";
+    } else if (queryAnalysis.concepts.includes("sort_date_desc")) {
+      main = "Chào mừng những thành viên mới vừa cập bến kho sách của Bookie:";
+    } else if (queryAnalysis.concepts.includes("sort_popularity_desc")) {
+      main = "Dưới đây là các đầu sách đang tạo nên cơn sốt và được săn đón nhất:";
+    } else {
+      main = "Danh sách được sắp xếp tối ưu theo yêu cầu của bạn:";
+    }
+
+    if (recs.length === 0) main = FALLBACK_MESSAGE;
+
+    const payload = {
+      mainAnswer: main,
+      whyExplanation: null,
+      followUpChips: defaultFollowUpChips().slice(0, 6),
+      sources: [],
+      recommendations: recs,
+      sessionHints: buildSessionHints(recDocs, recDocs[0]),
+      graphReasoningInfo: {
+        pathsUsed: [{ op: "smart_filter", concepts: queryAnalysis.concepts }],
+      },
       fallback: recs.length === 0,
     };
     return {
@@ -805,6 +870,7 @@ const chat = async ({ message, context = {}, actor = null, tenantId = "public", 
       concepts: queryAnalysis.concepts,
       signalsByRefId: signals,
       referencePrice: focus.metadata?.price,
+      queryEmbedding,
     });
     const top = ranked.slice(0, 6).map((x) => x.doc);
     const recs = top.map((d) =>
@@ -813,7 +879,7 @@ const chat = async ({ message, context = {}, actor = null, tenantId = "public", 
         badges: badgesFromSignals(d.refId, signals),
       })
     );
-    const main = `Dựa trên kho đã lập chỉ mục, mình ưu tiên khớp từ khóa trên cuốn trọng tâm, rồi mở rộng theo đồ thị (cùng tác giả / cùng thể loại) và xếp hạng hybrid:`;
+    const main = `Dựa trên sở thích của bạn, mình đã chọn lọc ra các đầu sách phù hợp nhất:`;
     const why = `Retrieval: từ khóa trên tiêu đề/mô tả; mở rộng: từ sách “${focus.metadata?.title || focus.title}” (${focus.refId}) theo ${RELATION_KINDS.AUTHORED_BY} và ${RELATION_KINDS.BELONGS_TO}; hạng: khớp chữ + cạnh đồ thị + soldCount (+ giá nếu có).`;
     const graphReasoningInfo = {
       pathsUsed: [
@@ -887,6 +953,7 @@ const chat = async ({ message, context = {}, actor = null, tenantId = "public", 
     };
   }
 
+
   /** ---------- recommend / bán chạy ---------- */
   if (intent === "recommend" || wantsRecommendationHeuristic(trimmed)) {
     const recDocs = await pickRecommendations(queryTokens, queryAnalysis.concepts, scopedTenantId);
@@ -946,6 +1013,139 @@ const chat = async ({ message, context = {}, actor = null, tenantId = "public", 
   };
 };
 
+const { generateAssistantResponse } = require("./geminiService");
+
+const chat = async ({ message, context = {}, actor = null, tenantId = "public", config = {} }) => {
+  // Step 1: Initial quick heuristic/graph search to provide baseline context
+  const initialResult = await chatInternal({ message, context, actor, tenantId, config });
+  
+  if (!initialResult.ok || initialResult.data?.handoff?.mode === "human") {
+    return initialResult;
+  }
+
+  try {
+    const recentMessages = context.recentMessages || [];
+    const scopedTenantId = normalizeTenantId(tenantId, config.defaultTenantId || "public");
+    
+    // Step 2: Call Gemini with 'toolsAvailable' enabled
+    let aiResponse = await generateAssistantResponse({
+      contextDocs: await _getDocsFromIds(initialResult.data, scopedTenantId),
+      recentMessages,
+      currentMessage: message,
+      intent: initialResult.data.graphReasoningInfo?.pathsUsed?.[0]?.intent || "general",
+      toolsAvailable: true,
+    });
+
+    // Step 3: Tool Execution Loop (Handle one round of tool calls)
+    if (aiResponse && aiResponse.type === "tool_call") {
+      const toolResults = [];
+      const toolMetadata = [];
+      let newRecommendations = [];
+
+      for (const call of aiResponse.calls) {
+        let resultData = null;
+        if (call.name === "search_books") {
+          const { docs } = await retrieve(call.args.query, {
+            tenantId: scopedTenantId,
+            analysis: { concepts: call.args.topic ? [call.args.topic] : [] }
+          });
+          resultData = docs.slice(0, 5).map(toSource);
+          // Sync recommendations with actual DB results
+          newRecommendations = docs.slice(0, 6).map(d => mapRecommendation(d, "Tìm thấy", { badges: ["Khớp yêu cầu"] }));
+          toolMetadata.push({ op: "agent_search", query: call.args.query, count: docs.length });
+        } else if (call.name === "get_book_reviews") {
+          const reviews = await catalogClient.getReviews(call.args.productId, scopedTenantId);
+          resultData = reviews.slice(0, 5).map(r => ({ 
+            user: r.userName || "Khách", 
+            rating: r.rating, 
+            comment: r.comment 
+          }));
+          toolMetadata.push({ op: "agent_reviews", productId: call.args.productId });
+        } else if (call.name === "get_store_policy") {
+          const faqDoc = await CorpusDocument.findOne({ 
+            tenantId: scopedTenantId, 
+            sourceType: "faq", 
+            $or: [
+              { refId: call.args.topic }, 
+              { keywords: call.args.topic },
+              { title: new RegExp(call.args.topic, "i") }
+            ] 
+          }).lean();
+          resultData = faqDoc ? faqDoc.body : "Không tìm thấy chính sách tương ứng.";
+          toolMetadata.push({ op: "agent_policy", topic: call.args.topic });
+        } else if (call.name === "compare_books") {
+          const docs = await CorpusDocument.find({
+            tenantId: scopedTenantId,
+            refId: { $in: call.args.productIds }
+          }).lean();
+          resultData = docs.map(d => ({
+            title: d.metadata?.title || d.title,
+            price: d.metadata?.price,
+            author: d.metadata?.author,
+            summary: d.body.slice(0, 200)
+          }));
+          toolMetadata.push({ op: "agent_compare", count: docs.length });
+        }
+
+        if (resultData) {
+          toolResults.push({ callId: call.id, name: call.name, output: resultData });
+        }
+      }
+
+      // If agent performed a search, prioritize those results for the UI display
+      if (newRecommendations.length > 0) {
+        initialResult.data.recommendations = newRecommendations;
+      }
+
+      // Final pass: Get text response with tool results context
+      aiResponse = await generateAssistantResponse({
+        contextDocs: [
+          ...(await _getDocsFromIds(initialResult.data, scopedTenantId)), 
+          ...toolResults.map(tr => ({ 
+            title: `Kết quả từ công cụ ${tr.name}`, 
+            body: JSON.stringify(tr.output), 
+            sourceType: "support" 
+          }))
+        ],
+        recentMessages,
+        currentMessage: message,
+        toolsAvailable: false 
+      });
+      
+      if (initialResult.data.graphReasoningInfo) {
+        initialResult.data.graphReasoningInfo.agentSteps = toolMetadata;
+      }
+    }
+
+    if (aiResponse && aiResponse.type === "text") {
+      initialResult.data.mainAnswer = aiResponse.text;
+      initialResult.data.message = composeMessage(initialResult.data);
+      initialResult.data.whyExplanation = null;
+    }
+
+  } catch (err) {
+    console.error("[chatService agent loop] Failed, falling back to heuristic:", err);
+  }
+  
+  return initialResult;
+};
+
+async function _getDocsFromIds(data, tenantId) {
+  const ids = [];
+  if (data.sources) data.sources.forEach(s => ids.push(s.id));
+  if (data.recommendations) data.recommendations.forEach(r => ids.push(r.productId));
+  if (data.sessionHints?.focusProductId) ids.push(data.sessionHints.focusProductId);
+  
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  if (uniqueIds.length === 0) return [];
+  
+  return await CorpusDocument.find({
+    tenantId,
+    refId: { $in: uniqueIds }
+  }).lean();
+}
+
 module.exports = {
   chat,
 };
+

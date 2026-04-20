@@ -1,6 +1,7 @@
-﻿import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { IoChatbubbleEllipsesOutline } from "react-icons/io5";
 import { fetchAssistantSuggestions, sendAssistantChat } from "../../services/assistantApi";
+import ReactMarkdown from "react-markdown";
 import { getMySupportConversations, postMySupportConversationMessage } from "../../api/supportApi";
 import { useUser } from "../../context/UserContext";
 import ChatProductCard from "./ChatProductCard";
@@ -75,6 +76,14 @@ function Chat() {
   const [suggestions, setSuggestions] = useState([]);
   const [messages, setMessages] = useState([]);
   const [supportState, setSupportState] = useState(loadSupportState);
+  
+  // Dragging State
+  // Dragging State
+  const [pos, setPos] = useState({ x: 0, y: 0 }); 
+  const [isDragging, setIsDragging] = useState(false);
+  
+  const bubbleRef = useRef(null);
+  const panelRef = useRef(null);
   const bodyRef = useRef(null);
   const supportSeenRef = useRef(new Set());
 
@@ -99,6 +108,66 @@ function Chat() {
       loadSuggestions();
     }
   }, [open, loadSuggestions]);
+
+  const onDragStart = (e) => {
+    // We don't call preventDefault() here to allow clicks to bubble, 
+    // but we use totalMove to distinguish.
+    e.stopPropagation();
+    
+    const bubble = bubbleRef.current;
+    if (!bubble) return;
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const initialX = pos.x;
+    const initialY = pos.y;
+    
+    let currentX = initialX;
+    let currentY = initialY;
+    let totalMove = 0;
+
+    const onMouseMove = (me) => {
+      const dx = me.clientX - startX;
+      const dy = me.clientY - startY;
+      totalMove += Math.abs(dx) + Math.abs(dy);
+      
+      currentX = initialX + dx;
+      currentY = initialY + dy;
+
+      bubble.style.setProperty("transform", `translate3d(${currentX}px, ${currentY}px, 0)`, "important");
+      bubble.style.setProperty("transition", "none", "important");
+      bubble.classList.add("dragging");
+      
+      const panel = panelRef.current;
+      if (panel) {
+        panel.style.setProperty("transform", `translate3d(${currentX}px, ${currentY}px, 0)`, "important");
+        panel.style.setProperty("transition", "none", "important");
+        panel.classList.add("dragging");
+      }
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      
+      bubble.classList.remove("dragging");
+      bubble.style.removeProperty("transition");
+      const panel = panelRef.current;
+      if (panel) {
+        panel.classList.remove("dragging");
+        panel.style.removeProperty("transition");
+      }
+
+      if (totalMove < 8) {
+        setOpen((v) => !v);
+      } else {
+        setPos({ x: currentX, y: currentY });
+      }
+    };
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  };
 
   useEffect(() => {
     scrollToBottom();
@@ -253,23 +322,30 @@ function Chat() {
     return () => clearInterval(timer);
   }, [open, supportState.mode, supportState.conversationId, syncSupportConversation, user?._id]);
 
-  const toggle = () => setOpen((v) => !v);
-
   return (
     <>
       {open && (
         <div
-          className="chat-panel"
+          ref={panelRef}
+          className={`chat-panel ${isDragging ? "dragging" : ""}`}
           role="dialog"
           aria-label="Trợ lý Bookie"
           onClick={(e) => e.stopPropagation()}
+          style={{
+            transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
+          }}
         >
-          <div className="chat-panel-header">
+          <div className="chat-panel-header" onMouseDown={onDragStart} style={{ cursor: "move" }}>
             <div className="chat-panel-title-block">
               <span className="chat-panel-title">Trợ lý Bookie</span>
-              <span className="chat-panel-sub">Gợi ý sách &amp; chính sách · dữ liệu đã lập chỉ mục</span>
+              <span className="chat-panel-sub">Hỗ trợ mua sắm &amp; Tư vấn trực tuyến</span>
             </div>
-            <button type="button" className="chat-panel-close" onClick={() => setOpen(false)}>
+            <button
+              type="button"
+              className="chat-panel-close"
+              onClick={() => setOpen(false)}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
               ×
             </button>
           </div>
@@ -284,15 +360,12 @@ function Chat() {
           <div className="chat-panel-body" ref={bodyRef}>
             {messages.length === 0 && (
               <div className="chat-welcome">
-                <p className="chat-welcome-lead">Xin chào! Mình có thể giúp bạn:</p>
+                <p className="chat-welcome-lead">Chào mừng bạn đến với Bookie! Mình có thể giúp gì cho bạn hôm nay?</p>
                 <ul className="chat-welcome-list">
-                  <li>Tìm và so sánh sách trong kho</li>
-                  <li>Gợi ý cùng tác giả / cùng thể loại (đồ thị nhẹ nội bộ)</li>
-                  <li>Đọc nhanh chính sách vận chuyển &amp; đổi trả</li>
+                  <li>Tìm kiếm những đầu sách phù hợp nhất với sở thích</li>
+                  <li>Gợi ý sách cùng thể loại hoặc cùng tác giả yêu thích</li>
+                  <li>Giải đáp nhanh các chính sách mua hàng và ưu đãi</li>
                 </ul>
-                <p className="chat-welcome-hint">
-                  Phiên làm việc nhớ nhẹ sách bạn vừa xem (trên trình duyệt) để câu hỏi tiếp tự nhiên hơn.
-                </p>
               </div>
             )}
             {messages.map((m, idx) => (
@@ -313,7 +386,9 @@ function Chat() {
                     >
                       {m.mainAnswer ? (
                         <>
-                          <p className="chat-main-answer">{m.mainAnswer}</p>
+                          <div className="chat-main-answer markdown-body">
+                            <ReactMarkdown>{m.mainAnswer}</ReactMarkdown>
+                          </div>
                           {m.graphReasoningInfo?.policyBadge ? (
                             <div className="chat-graph-badges" aria-label="Luồng đồ thị">
                               <span className="chat-graph-badge chat-graph-badge--policy">
@@ -344,18 +419,14 @@ function Chat() {
                               ) : null}
                             </div>
                           ) : null}
-                          {m.whyExplanation ? (
-                            <div className="chat-why-box">
-                              <span className="chat-why-label">Vì sao mình gợi ý</span>
-                              <p className="chat-why-text">{m.whyExplanation}</p>
-                            </div>
-                          ) : null}
                           {m.handoff?.mode === "human" ? (
                             <div className="chat-handoff-pill">Đã chuyển cuộc trò chuyện cho nhân viên hỗ trợ</div>
                           ) : null}
                         </>
                       ) : (
-                        <p className="chat-main-answer">{m.text}</p>
+                        <div className="chat-main-answer markdown-body">
+                          <ReactMarkdown>{m.text}</ReactMarkdown>
+                        </div>
                       )}
                     </div>
                     {m.role !== "support" && Array.isArray(m.recommendations) && m.recommendations.length > 0 && (
@@ -449,14 +520,18 @@ function Chat() {
         </div>
       )}
       <div
-        className="chat-bubble"
-        onClick={toggle}
+        ref={bubbleRef}
+        className={`chat-bubble ${isDragging && !open ? "dragging" : ""}`}
+        onMouseDown={onDragStart}
         role="button"
         tabIndex={0}
+        style={{
+          transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            toggle();
+            setOpen((v) => !v);
           }
         }}
       >

@@ -4,6 +4,7 @@ const { CorpusDocument } = require("../models/CorpusDocument");
 const { normalize } = require("./retrievalService");
 const { authorKeyFromAuthor } = require("./graphService");
 const { normalizeTenantId } = require("./tenantContextService");
+const { generateBatchEmbeddings } = require("./geminiService");
 
 const fetchJson = async (
   url,
@@ -132,8 +133,26 @@ const buildNormalizedText = (doc) =>
 
 const upsertDocs = async (docs, tenantId = "public") => {
   const scopedTenantId = normalizeTenantId(tenantId, "public");
+  
+  // Generate embeddings in batches of 30 to be efficient
+  const batchSize = 30;
+  const docsWithEmbeddings = [];
+  
+  for (let i = 0; i < docs.length; i += batchSize) {
+    const chunk = docs.slice(i, i + batchSize);
+    const textsToEmbed = chunk.map(d => `${d.title}. ${d.body}`.slice(0, 1500));
+    const embeddings = await generateBatchEmbeddings(textsToEmbed);
+    
+    chunk.forEach((doc, index) => {
+      docsWithEmbeddings.push({
+        ...doc,
+        embedding: embeddings[index] || undefined
+      });
+    });
+  }
+
   let upserted = 0;
-  for (const doc of docs) {
+  for (const doc of docsWithEmbeddings) {
     const normalizedText = buildNormalizedText(doc);
     await CorpusDocument.updateOne(
       { tenantId: scopedTenantId, sourceType: doc.sourceType, refId: doc.refId },

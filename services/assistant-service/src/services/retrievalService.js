@@ -1,6 +1,7 @@
 const { CorpusDocument } = require("../models/CorpusDocument");
 const { analyzeQuery, normalize, tokenize, CONCEPT_DEFINITIONS } = require("./queryUnderstandingService");
 const { normalizeTenantId } = require("./tenantContextService");
+const { generateEmbedding } = require("./geminiService");
 
 const escapeRegex = (s = "") => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -16,7 +17,20 @@ const conceptKeywords = Object.entries(CONCEPT_DEFINITIONS).reduce((acc, [key, v
   return acc;
 }, {});
 
-const scoreDoc = ({ queryTokens = [], concepts = [], doc }) => {
+const cosineSimilarity = (vecA, vecB) => {
+  if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < vecA.length; i++) {
+    dotProduct += vecA[i] * vecB[i];
+    normA += vecA[i] * vecA[i];
+    normB += vecB[i] * vecB[i];
+  }
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+};
+
+const scoreDoc = ({ queryTokens = [], concepts = [], doc, queryEmbedding = null }) => {
   const hay = `${doc.title} ${doc.body} ${(doc.keywords || []).join(" ")} ${doc.normalizedText || ""}`;
   const hayNorm = normalize(hay);
   let lexicalScore = 0;
@@ -27,8 +41,9 @@ const scoreDoc = ({ queryTokens = [], concepts = [], doc }) => {
     }
     if (hayNorm.includes(token)) {
       lexicalScore += 2.8;
-      if (token.length >= 5) {
-        exactHitBonus += 0.4;
+      // Bonus cho khớp title trực tiếp
+      if ((doc.title || "").toLowerCase().includes(token.toLowerCase())) {
+        exactHitBonus += 8.0; 
       }
     }
   }
@@ -39,8 +54,14 @@ const scoreDoc = ({ queryTokens = [], concepts = [], doc }) => {
       conceptScore += 2;
     }
   }
+  
+  let semanticScoreValue = 0;
+  if (queryEmbedding && doc.embedding && Array.isArray(doc.embedding)) {
+    semanticScoreValue = cosineSimilarity(queryEmbedding, doc.embedding) * 15;
+  }
+  
   const sourceBias = doc.sourceType === "faq" ? 0.6 : 0;
-  return lexicalScore + conceptScore + exactHitBonus + sourceBias;
+  return lexicalScore + conceptScore + exactHitBonus + semanticScoreValue + sourceBias;
 };
 
 const resolveTenantId = (tenantId) => normalizeTenantId(tenantId, "public");
@@ -96,10 +117,12 @@ const retrieve = async (message, options = {}) => {
   const tenantId = resolveTenantId(options.tenantId);
   const analysis = options.analysis || analyzeQuery(message, { context });
   const queryTokens = analysis.expandedTokens || tokenize(analysis.rewrittenQuery || message);
+  const cleanKeywordQuery = analysis.baseTokens.join(" "); 
+
+  const queryEmbedding = await generateEmbedding(cleanKeywordQuery || message);
 
   const candidateQueries = [
-    (message || "").trim(),
-    analysis.normalizedQuery || "",
+    cleanKeywordQuery,
     analysis.rewrittenQuery || "",
   ].filter(Boolean);
 
@@ -112,8 +135,9 @@ const retrieve = async (message, options = {}) => {
   }
 
   let docs = textMatches;
-  if (!docs.length) {
-    docs = await findWithTokens(queryTokens, analysis.concepts || [], tenantId);
+  if (!docs.length || docs.length < 5) {
+    const tokenDocs = await findWithTokens(queryTokens, analysis.concepts || [], tenantId);
+    docs = [...docs, ...tokenDocs];
   }
 
   const unique = [];
@@ -125,7 +149,7 @@ const retrieve = async (message, options = {}) => {
     }
     seen.add(key);
     unique.push(d);
-    if (unique.length >= 10) {
+    if (unique.length >= 15) { 
       break;
     }
   }
@@ -137,12 +161,14 @@ const retrieve = async (message, options = {}) => {
         queryTokens,
         concepts: analysis.concepts || [],
         doc,
+        queryEmbedding,
       }),
     }))
     .sort((a, b) => b.score - a.score);
 
   return {
     queryTokens,
+    queryEmbedding,
     docs: rescored.map((item) => item.doc),
     analysis,
     retrievalMeta: {
@@ -170,11 +196,11 @@ const mergeByRefId = (lists) => {
 };
 
 /**
- * Hybrid deterministic ranking (no embeddings): lexical + graph signals + popularity + optional price fit.
+ * Hybrid deterministic ranking: lexical + semantic + graph signals + popularity + optional price fit.
  */
 const rankCatalogHybrid = (
   docs,
-  { queryTokens = [], concepts = [], signalsByRefId = {}, referencePrice = null } = {}
+  { queryTokens = [], concepts = [], signalsByRefId = {}, referencePrice = null, queryEmbedding = null } = {}
 ) => {
   const hayFor = (doc) => {
     const meta = doc.metadata || {};
@@ -187,12 +213,18 @@ const rankCatalogHybrid = (
     const sold = Number(meta.soldCount) || 0;
     const sigs = signalsByRefId[doc.refId] || [];
     const hay = hayFor(doc);
+    
     let retrieval = 0;
     for (const t of queryTokens) {
       if (t && hay.includes(t)) {
-        retrieval += 3;
+        retrieval += 4.5;
+        // Exact title match bonus
+        if ((doc.title || "").toLowerCase().includes(t.toLowerCase())) {
+          retrieval += 10.0;
+        }
       }
     }
+
     let conceptBoost = 0;
     for (const concept of concepts) {
       const kws = conceptKeywords[concept] || [];
@@ -200,23 +232,21 @@ const rankCatalogHybrid = (
         conceptBoost += 1.4;
       }
     }
+
     let graphW = 0;
-    if (sigs.includes("same_author")) {
-      graphW += 12;
+    if (sigs.includes("same_author")) graphW += 12;
+    if (sigs.includes("same_category")) graphW += 9;
+    if (sigs.includes("cheaper_in_category")) graphW += 7;
+    if (sigs.includes("recommended_next")) graphW += 5;
+    if (sigs.includes("lexical_primary")) graphW += 18;
+
+    const popularity = Math.log10(sold + 1) * 0.8; 
+
+    let semantic = 0;
+    if (queryEmbedding && doc.embedding && Array.isArray(doc.embedding)) {
+      semantic = cosineSimilarity(queryEmbedding, doc.embedding) * 15;
     }
-    if (sigs.includes("same_category")) {
-      graphW += 9;
-    }
-    if (sigs.includes("cheaper_in_category")) {
-      graphW += 7;
-    }
-    if (sigs.includes("recommended_next")) {
-      graphW += 5;
-    }
-    if (sigs.includes("lexical_primary")) {
-      graphW += 14;
-    }
-    const popularity = Math.log10(sold + 1) * 2.2;
+
     let priceFit = 0;
     if (referencePrice != null && meta.price != null) {
       const p = Number(meta.price);
@@ -225,9 +255,11 @@ const rankCatalogHybrid = (
         priceFit += 4 * (1 - p / (rp + 1));
       }
     }
-    const total = retrieval + conceptBoost + graphW + popularity + priceFit;
+
+    const total = retrieval + conceptBoost + graphW + popularity + priceFit + semantic;
     return { doc, score: total };
   });
+
   scored.sort((a, b) => b.score - a.score);
   return scored;
 };
@@ -241,6 +273,25 @@ const pickRecommendations = async (queryTokens = [], concepts = [], tenantId = "
   return ranked.slice(0, 6).map((x) => x.doc);
 };
 
+const findRankedCatalog = async ({ tenantId, concepts = [] }) => {
+  const scopedTenantId = resolveTenantId(tenantId);
+  const query = { tenantId: scopedTenantId, sourceType: "catalog" };
+  let sort = { indexedAt: -1 };
+
+  if (concepts.includes("sort_price_asc")) {
+    sort = { "metadata.price": 1 };
+  } else if (concepts.includes("sort_price_desc")) {
+    sort = { "metadata.price": -1 };
+  } else if (concepts.includes("sort_popularity_desc")) {
+    sort = { "metadata.soldCount": -1 };
+  } else if (concepts.includes("sort_date_desc")) {
+    sort = { indexedAt: -1 };
+  }
+
+  const docs = await CorpusDocument.find(query).sort(sort).limit(10).lean();
+  return docs;
+};
+
 module.exports = {
   retrieve,
   pickRecommendations,
@@ -248,4 +299,5 @@ module.exports = {
   mergeByRefId,
   tokenize,
   normalize,
+  findRankedCatalog,
 };

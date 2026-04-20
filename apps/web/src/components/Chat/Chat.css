@@ -20,9 +20,16 @@
     filter: brightness(1.03);
     box-shadow: 0 10px 24px rgba(196, 0, 0, 0.34);
   }
+  .chat-bubble.dragging {
+    transition: none !important;
+    cursor: move;
+    filter: brightness(1.1);
+    user-select: none !important;
+  }
   .chat-icon {
     width: 30px;
     height: 30px;
+    pointer-events: none;
   }
 
   .chat-panel {
@@ -39,6 +46,13 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    transition: transform 0.05s linear; /* Very fast or none to avoid lag during drag */
+  }
+
+  .chat-panel.dragging {
+    user-select: none !important;
+    transition: none !important;
+    cursor: move;
   }
 
   .chat-panel-header {
@@ -52,6 +66,12 @@
     color: #1a1a1a;
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
     background: linear-gradient(135deg, #fff8f7, #fff);
+    cursor: move;
+    user-select: none;
+  }
+
+  .chat-panel-header:active {
+    background: #fff0ef;
   }
 
   .chat-panel-title-block {

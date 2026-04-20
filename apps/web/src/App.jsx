@@ -13,7 +13,7 @@ import FeaturedAuthors from "./pages/FeaturedAuthors";
 import { useEffect } from "react";
 import { useUser } from "./context/UserContext";
 import PaymentPage from "./pages/Order/PaymentPage";
-import { getMe as getCurrentProfile, refreshToken as refreshAuthToken } from "./api/authApi";
+import Chat from "./components/Chat";
 
 function App() {
   const { user, setUser } = useUser();
@@ -60,6 +60,7 @@ function App() {
           {user && user.role === "admin" ? <Route path="/admin" element={<Admin />} /> : null}
           <Route path="/*" element={<HomePage />} />
         </Routes>
+        <Chat />
       </BrowserRouter>
   );
 }

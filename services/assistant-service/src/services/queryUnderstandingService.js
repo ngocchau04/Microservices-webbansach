@@ -31,6 +31,15 @@ const STOPWORDS = new Set([
   "ok",
   "nhi",
   "nhiu",
+  "cuon",
+  "sach",
+  "quyen",
+  "tua",
+  "dau sach",
+  "muon",
+  "hoc",
+  "tim",
+  "ve",
 ]);
 
 const CASUAL_REPLACEMENTS = [
@@ -102,6 +111,26 @@ const CONCEPT_DEFINITIONS = {
   current_product_reference: {
     aliases: ["cuon nay", "sach nay", "cuon do", "san pham nay", "book nay"],
     expansions: ["san pham dang xem"],
+  },
+  sort_price_asc: {
+    aliases: ["re nhat", "gia thap nhat", "it tien nhat", "tiet kiem nhat", "gia mem nhat"],
+    expansions: ["gia thap nhat"],
+  },
+  sort_price_desc: {
+    aliases: ["dat nhat", "gia cao nhat", "cao cap nhat", "xa xi nhat"],
+    expansions: ["gia cao nhat"],
+  },
+  sort_popularity_desc: {
+    aliases: ["ban chay nhat", "hot nhat", "pho bien nhat", "duoc mua nhieu nhat"],
+    expansions: ["ban chay nhat"],
+  },
+  sort_date_desc: {
+    aliases: ["moi nhat", "vua ve", "moi nhap", "hang moi"],
+    expansions: ["moi nhat"],
+  },
+  database: {
+    aliases: ["mongodb", "nosql", "sql", "co so du lieu", "database", "data intensive", "db"],
+    expansions: ["mongodb", "data", "database", "backend"],
   },
 };
 
