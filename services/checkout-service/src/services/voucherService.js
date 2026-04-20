@@ -72,6 +72,15 @@ const toLegacyVoucher = (voucher) => ({
   status: voucher.status,
 });
 
+const parseNullableNumber = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : NaN;
+};
+
 const listAvailableVouchers = async () => {
   const vouchers = await Voucher.find({ status: "active" }).sort({ createdAt: -1 });
   const available = vouchers.filter(isVoucherActive);
@@ -168,19 +177,52 @@ const incrementVoucherUsage = async ({ code }) => {
 };
 
 const createVoucher = async ({ payload }) => {
-  const code = String(payload.code || payload.voucherCode || "").trim().toUpperCase();
-  const type = normalizeVoucherType(payload.type || payload.voucherType);
-  const value = Number(payload.value ?? payload.voucherValue);
-  const minOrderValue = Number(payload.minOrderValue ?? 0);
-  const maxDiscount = payload.maxDiscount ?? payload.maxDiscountValue ?? null;
-  const usageLimit = payload.usageLimit ?? null;
-  const expiresAt = payload.expiresAt || payload.voucherExpiration;
+  const normalizedPayload = payload || {};
+  const code = String(normalizedPayload.code || normalizedPayload.voucherCode || "")
+    .trim()
+    .toUpperCase();
+  const type = normalizeVoucherType(normalizedPayload.type || normalizedPayload.voucherType);
+  const value = Number(normalizedPayload.value ?? normalizedPayload.voucherValue);
+  const minOrderValue = Number(normalizedPayload.minOrderValue ?? 0);
+  const maxDiscount = parseNullableNumber(
+    normalizedPayload.maxDiscount ?? normalizedPayload.maxDiscountValue
+  );
+  const usageLimit = parseNullableNumber(normalizedPayload.usageLimit);
+  const expiresAtRaw = normalizedPayload.expiresAt || normalizedPayload.voucherExpiration;
+  const expiresAt = expiresAtRaw ? new Date(expiresAtRaw) : null;
 
-  if (!code || !type || !Number.isFinite(value) || value < 0 || !expiresAt) {
+  if (
+    !code ||
+    !type ||
+    !Number.isFinite(value) ||
+    value < 0 ||
+    !Number.isFinite(minOrderValue) ||
+    minOrderValue < 0 ||
+    !expiresAt ||
+    Number.isNaN(expiresAt.getTime())
+  ) {
     return {
       ok: false,
       statusCode: 400,
       message: "Invalid voucher payload",
+      code: "CHECKOUT_VOUCHER_VALIDATION_ERROR",
+    };
+  }
+
+  if (maxDiscount !== null && (!Number.isFinite(maxDiscount) || maxDiscount < 0)) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "maxDiscount must be a non-negative number",
+      code: "CHECKOUT_VOUCHER_VALIDATION_ERROR",
+    };
+  }
+
+  if (usageLimit !== null && (!Number.isFinite(usageLimit) || usageLimit < 1)) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "usageLimit must be greater than or equal to 1",
       code: "CHECKOUT_VOUCHER_VALIDATION_ERROR",
     };
   }
@@ -195,16 +237,39 @@ const createVoucher = async ({ payload }) => {
     };
   }
 
-  const created = await Voucher.create({
-    code,
-    type,
-    value,
-    minOrderValue,
-    maxDiscount: Number.isFinite(Number(maxDiscount)) ? Number(maxDiscount) : null,
-    usageLimit: Number.isFinite(Number(usageLimit)) ? Number(usageLimit) : null,
-    expiresAt,
-    status: payload.status || "active",
-  });
+  let created;
+  try {
+    created = await Voucher.create({
+      code,
+      type,
+      value,
+      minOrderValue,
+      maxDiscount,
+      usageLimit,
+      expiresAt,
+      status: normalizedPayload.status || "active",
+    });
+  } catch (error) {
+    if (error && error.code === 11000) {
+      return {
+        ok: false,
+        statusCode: 409,
+        message: "Voucher code already exists",
+        code: "CHECKOUT_VOUCHER_CONFLICT",
+      };
+    }
+
+    if (error && error.name === "ValidationError") {
+      return {
+        ok: false,
+        statusCode: 400,
+        message: "Invalid voucher payload",
+        code: "CHECKOUT_VOUCHER_VALIDATION_ERROR",
+      };
+    }
+
+    throw error;
+  }
 
   return {
     ok: true,

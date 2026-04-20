@@ -111,7 +111,8 @@ function AdminVoucher() {
       fetchVouchers();
     } catch (error) {
       console.error("Error adding voucher:", error);
-      alert("Khong the them voucher, vui long thu lai!");
+      const serverMessage = error?.response?.data?.message;
+      alert(serverMessage || "Khong the them voucher, vui long thu lai!");
     }
   };
 

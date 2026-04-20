@@ -87,7 +87,11 @@ const getProductById = async ({ productId }) => {
     };
   }
 
-  const product = await Product.findById(productId).lean();
+  const productQuery = Product.findById(productId);
+  const product =
+    productQuery && typeof productQuery.lean === "function"
+      ? await productQuery.lean()
+      : await productQuery;
   if (!product) {
     return {
       ok: false,
@@ -100,8 +104,8 @@ const getProductById = async ({ productId }) => {
   return {
     ok: true,
     statusCode: 200,
-    data: { item: product },
-    legacy: { product },
+    data: { item: toPlain(product) || product },
+    legacy: { product: toPlain(product) || product },
   };
 };
 

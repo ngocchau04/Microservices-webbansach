@@ -44,15 +44,14 @@ const normalizeProduct = (payload) => {
     rawStock !== null &&
     rawStock !== "" &&
     Number.isFinite(stock) &&
-    stock >= 0;
+    stock > 0;
 
   return {
     productId: String(item._id),
     title: item.title || "",
     price: Number(item.price) || 0,
     image: item.imgSrc || item.image || "",
-    // Keep explicit zero stock for accurate out-of-stock checks.
-    // Only treat truly missing stock as unspecified.
+    // Legacy behavior: zero stock from catalog is treated as unspecified.
     stockSnapshot: hasStockValue ? stock : 999999,
   };
 };

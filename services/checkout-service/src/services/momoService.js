@@ -163,7 +163,7 @@ const verifyCallback = ({ params, config }) => {
 };
 
 const isSuccessResponse = (params) =>
-  String(params?.errorCode || params?.resultCode || "") === "0";
+  String(params?.errorCode ?? params?.resultCode ?? "") === "0";
 
 module.exports = {
   buildReturnUrl,
