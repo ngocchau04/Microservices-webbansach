@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IoChatbubbleEllipsesOutline } from "react-icons/io5";
-import { fetchAssistantSuggestions, sendAssistantChat } from "../../services/assistantApi";
+import {
+  fetchAssistantSuggestions,
+  sendAssistantChat,
+  sendAssistantImageChat,
+} from "../../services/assistantApi";
 import ReactMarkdown from "react-markdown";
 import { getMySupportConversations, postMySupportConversationMessage } from "../../api/supportApi";
 import { useUser } from "../../context/UserContext";
@@ -68,6 +72,12 @@ function getClientSessionId() {
   return generated;
 }
 
+function getCurrentProductIdFromPath() {
+  const path = window.location.pathname || "";
+  const match = path.match(/^\/book\/([^/?#]+)/i);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
 function Chat() {
   const { user } = useUser();
   const [open, setOpen] = useState(false);
@@ -76,6 +86,8 @@ function Chat() {
   const [suggestions, setSuggestions] = useState([]);
   const [messages, setMessages] = useState([]);
   const [supportState, setSupportState] = useState(loadSupportState);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImagePreview, setSelectedImagePreview] = useState("");
   
   // Dragging State
   // Dragging State
@@ -268,12 +280,15 @@ function Chat() {
 
       const data = await sendAssistantChat(trimmed, {
         lastProductId: ctx.lastProductId || undefined,
+        currentProductId: getCurrentProductIdFromPath() || undefined,
         focusAuthorKey: ctx.focusAuthorKey || undefined,
         focusCategoryKey: ctx.focusCategoryKey || undefined,
         userId: user?._id || "",
         userEmail: user?.email || "",
         sessionId: getClientSessionId(),
         recentMessages,
+      }, {
+        currentProductId: getCurrentProductIdFromPath() || undefined,
       });
 
       saveSessionContext(data.sessionHints || {});
@@ -311,6 +326,62 @@ function Chat() {
 
   const handleSend = async () => {
     await sendWithText(input);
+  };
+
+  const handleImageSelected = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setSelectedImage(null);
+      setSelectedImagePreview("");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      appendMessage("assistant", { text: "Vui long chon file anh (jpg/png/webp)." });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      appendMessage("assistant", { text: "Anh vuot qua 5MB. Vui long chon anh nho hon." });
+      return;
+    }
+    setSelectedImage(file);
+    setSelectedImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleSendImage = async () => {
+    if (!selectedImage || loading) {
+      return;
+    }
+    appendMessage("user", {
+      text: input?.trim() || "Tim sach giong anh nay",
+      createdAt: new Date().toISOString(),
+    });
+    setLoading(true);
+    try {
+      const data = await sendAssistantImageChat({
+        message: input?.trim() || "Tim sach giong anh nay",
+        imageFile: selectedImage,
+        currentProductId: getCurrentProductIdFromPath() || undefined,
+      });
+      appendMessage("assistant", {
+        text: data.message || "",
+        mainAnswer: data.mainAnswer,
+        recommendations: data.recommendations || [],
+        followUpChips: data.followUpChips || [],
+        graphReasoningInfo: data.graphReasoningInfo || null,
+        fallback: data.fallback,
+        createdAt: new Date().toISOString(),
+      });
+      setInput("");
+      setSelectedImage(null);
+      setSelectedImagePreview("");
+    } catch {
+      appendMessage("assistant", {
+        text: "Tinh nang tim sach bang anh chua san sang. Ban co the nhap ten sach hoac chu de.",
+        fallback: true,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -486,9 +557,7 @@ function Chat() {
                   key={s}
                   type="button"
                   className="chat-suggestion-chip"
-                  onClick={() => {
-                    setInput(s);
-                  }}
+                  onClick={() => sendWithText(s)}
                 >
                   {s}
                 </button>
@@ -516,7 +585,33 @@ function Chat() {
             <button type="button" className="chat-panel-send" onClick={handleSend} disabled={loading}>
               Gửi
             </button>
+            <label className="chat-panel-send" style={{ cursor: "pointer" }}>
+              Ảnh
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleImageSelected}
+                style={{ display: "none" }}
+              />
+            </label>
+            <button
+              type="button"
+              className="chat-panel-send"
+              onClick={handleSendImage}
+              disabled={loading || !selectedImage}
+            >
+              Gửi ảnh
+            </button>
           </div>
+          {selectedImagePreview ? (
+            <div style={{ padding: "8px 12px" }}>
+              <img
+                src={selectedImagePreview}
+                alt="preview"
+                style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8 }}
+              />
+            </div>
+          ) : null}
         </div>
       )}
       <div

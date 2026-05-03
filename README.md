@@ -172,6 +172,10 @@ Nếu web lên nhưng API lỗi, thường là một trong các service phía sa
 5. Dashboard reflects order data (`reporting-service`)
 
 Detailed manual checklist: `docs/e2e-manual-checklist.md`
+Assistant chatbot manual test: `docs/assistant-chatbot.md`
+GraphRAG chatbot guide: `docs/graphrag-chatbot.md`
+Image search chatbot guide: `docs/image-search-chatbot.md`
+Demo script: `docs/chatbot-demo-script.md`
 
 ## Test Commands
 

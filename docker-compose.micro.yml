@@ -211,6 +211,7 @@ services:
       - CATALOG_SERVICE_URL=http://catalog-service:4002
       - CATALOG_INTERNAL_API_KEY=dev_catalog_internal_change_me
       - SUPPORT_SERVICE_URL=http://support-service:4007
+      - IMAGE_SEARCH_SERVICE_URL=http://host.docker.internal:4010
       - ASSISTANT_REINDEX_API_KEY=dev_assistant_reindex_change_me
       - SUPPORT_INTERNAL_API_KEY=dev_support_internal_change_me
     ports:

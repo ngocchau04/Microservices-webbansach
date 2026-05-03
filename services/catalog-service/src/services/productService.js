@@ -9,11 +9,9 @@ const {
 } = require("../utils/validators");
 
 const toPlain = (doc) => {
-  if (!doc) {
-    return null;
-  }
-
-  return typeof doc.toObject === "function" ? doc.toObject() : doc;
+  if (!doc) return null;
+  if (typeof doc.toObject === "function") return doc.toObject();
+  return doc;
 };
 
 const normalizeProductPayload = (payload = {}) => {
