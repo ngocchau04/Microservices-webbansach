@@ -1,12 +1,19 @@
 const { analyzeQuery } = require("./queryUnderstandingService");
 
 const clamp = (value, min = 0, max = 1) => Math.max(min, Math.min(max, value));
+const foldVi = (value = "") =>
+  String(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d");
 
 const detectIntentDetailed = (raw = "", options = {}) => {
   const context = options.context && typeof options.context === "object" ? options.context : {};
   const analysis = options.analysis || analyzeQuery(raw, { context });
   const concepts = new Set(analysis.concepts || []);
   const n = analysis.normalizedQuery || "";
+  const nf = foldVi(raw || n);
 
   const scores = {
     explain: 0,
@@ -56,7 +63,7 @@ const detectIntentDetailed = (raw = "", options = {}) => {
     scores.search += 1;
   }
   if (context.lastProductId) {
-    if (scores.cheaper > 0 || /re hon|gia mem|gia re/.test(n)) {
+    if (scores.cheaper > 0 || /re hon|gia mem|gia re/.test(nf)) {
       scores.cheaper += 2;
     }
     if (scores.same_category > 0) {
@@ -67,19 +74,31 @@ const detectIntentDetailed = (raw = "", options = {}) => {
     }
   }
 
-  if (/nen doc gi|co cuon nao|phu hop|danh cho/.test(n)) {
+  if (/nen doc gi|co cuon nao|phu hop|danh cho/.test(nf)) {
     scores.recommend += 2;
   }
-  if (/tim sach|muon sach|sach ve|sach cho/.test(n)) {
+  if (/tim sach|muon sach|sach ve|sach cho|co sach/.test(nf)) {
     scores.search += 2;
   }
-  if (/re hon|gia re|gia mem|thap hon/.test(n)) {
+  if (/(react|mongodb|javascript|java|node\.?js|python)\b/.test(nf)) {
+    scores.search += 2.2;
+  }
+  if (/re hon|gia re|gia mem|thap hon/.test(nf)) {
     scores.cheaper += 2.5;
   }
-  if (/cung the loai|the loai giong|genre/.test(n)) {
+  if (/cung tac gia|tac gia nay|same author/.test(nf)) {
+    scores.same_author += 2.2;
+  }
+  if (/cung the loai|the loai giong|genre/.test(nf)) {
     scores.same_category += 1.5;
   }
-  if (/vi sao|tai sao|ly do/.test(n)) {
+  if (/van chuyen|giao hang|ship|delivery/.test(nf)) {
+    scores.recommend -= 2;
+  }
+  if (/doi tra|hoan tien|refund|tra hang/.test(nf)) {
+    scores.recommend -= 2;
+  }
+  if (/vi sao|tai sao|ly do/.test(nf)) {
     scores.explain += 2;
   }
 
@@ -112,13 +131,14 @@ const detectPolicyIntent = (rawOrAnalysis = "", options = {}) => {
       : analyzeQuery(rawOrAnalysis, options);
   const concepts = new Set(analysis.concepts || []);
   const n = analysis.normalizedQuery || "";
-  if (concepts.has("shipping_policy") || /van chuyen|giao hang|ship|delivery/.test(n)) {
+  const nf = foldVi(n);
+  if (concepts.has("shipping_policy") || /van chuyen|giao hang|ship|delivery/.test(nf)) {
     return { faqRefId: "shipping", badge: "policy_shipping" };
   }
-  if (concepts.has("return_policy") || /doi tra|hoan tien|refund|tra hang/.test(n)) {
+  if (concepts.has("return_policy") || /doi tra|hoan tien|refund|tra hang/.test(nf)) {
     return { faqRefId: "returns", badge: "policy_returns" };
   }
-  if (concepts.has("support_contact") || /lien he|hotro|support|contact|ticket/.test(n)) {
+  if (concepts.has("support_contact") || /lien he|ho tro|hotro|support|contact|ticket/.test(nf)) {
     return { faqRefId: "contact", badge: "policy_contact" };
   }
   return null;
@@ -131,16 +151,17 @@ const detectHumanSupportIntent = (rawOrAnalysis = "", options = {}) => {
       : analyzeQuery(rawOrAnalysis, options);
   const concepts = new Set(analysis.concepts || []);
   const n = analysis.normalizedQuery || "";
+  const nf = foldVi(n);
 
   if (
     concepts.has("support_contact") &&
-    /(lien he|nhan vien|nguoi ho tro|noi chuyen voi shop|gap nguoi|can nhan vien|tro giup truc tiep)/.test(n)
+    /(lien he|nhan vien|nguoi ho tro|noi chuyen voi shop|gap nguoi|can nhan vien|tro giup truc tiep)/.test(nf)
   ) {
     return true;
   }
   if (
     /(lien he nhan vien|gap nhan vien|gap nguoi ho tro|noi chuyen voi shop|toi can nhan vien|toi can nguoi ho tro)/.test(
-      n
+      nf
     )
   ) {
     return true;

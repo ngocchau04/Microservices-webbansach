@@ -9,6 +9,8 @@ const {
 } = require("./assistantIntents");
 const { analyzeQuery } = require("./queryUnderstandingService");
 const { createOrOpenSupportHandoff } = require("./supportHandoffService");
+const { runLiveCatalogFallback } = require("./liveCatalogFallbackService");
+const { graphTraverseRecommendations } = require("./graphTraversalService");
 const {
   findSameAuthor,
   findSameCategory,
@@ -252,6 +254,86 @@ const chatInternal = async ({ message, context = {}, actor = null, tenantId = "p
   const intent = intentInfo.intent || detectIntent(trimmed, { analysis: queryAnalysis, context });
   const policyHint = detectPolicyIntent(queryAnalysis);
   const wantsHumanSupport = detectHumanSupportIntent(queryAnalysis);
+  const graphIntentMap = {
+    same_author: "same_author",
+    same_category: "same_category",
+    cheaper: "cheaper",
+    explain: "explain_recommendation",
+    related_next: "product_relationship",
+  };
+
+  const graphIntent = graphIntentMap[intent] || null;
+  const currentProductId = String(
+    context.currentProductId || context.lastProductId || ""
+  ).trim();
+
+  if (graphIntent && currentProductId) {
+    const graphResult = await graphTraverseRecommendations({
+      tenantId: scopedTenantId,
+      currentProductId,
+      intent: graphIntent,
+      limit: 5,
+    });
+    if (graphResult.ok && Array.isArray(graphResult.data?.recommendations)) {
+      const recs = graphResult.data.recommendations;
+      if (recs.length > 0) {
+        const mainAnswer =
+          graphIntent === "same_author"
+            ? "Mình tìm thấy một số sách cùng tác giả với cuốn hiện tại:"
+            : graphIntent === "same_category"
+            ? "Mình tìm thấy một số sách cùng thể loại với cuốn hiện tại:"
+            : graphIntent === "cheaper"
+            ? "Mình tìm thấy một số sách rẻ hơn trong cùng nhóm liên quan:"
+            : "Mình tìm thấy các sách liên quan theo đồ thị tri thức:";
+        const payload = {
+          mainAnswer,
+          whyExplanation:
+            graphIntent === "explain_recommendation"
+              ? "Mình truy vết trên đồ thị Book -> Author/Category/Tag và cộng điểm tồn kho, rating, giá."
+              : null,
+          followUpChips: defaultFollowUpChips().slice(0, 6),
+          sources: [],
+          recommendations: recs,
+          sessionHints: {
+            focusProductId: recs[0]?.productId || currentProductId,
+            lastProductId: recs[0]?.productId || currentProductId,
+          },
+          graphReasoningInfo: {
+            type: "graph_recommendation",
+            expandedBy: graphIntent,
+            pathsUsed: recs.slice(0, 3).map((r) => ({
+              op: "graph_path",
+              path: r.graphPath || [],
+            })),
+          },
+          fallback: false,
+        };
+        return {
+          ok: true,
+          statusCode: 200,
+          data: { ...payload, message: composeMessage(payload) },
+        };
+      }
+    }
+  }
+
+  const liveFallback = await runLiveCatalogFallback({
+    message: trimmed,
+    intent: policyHint
+      ? policyHint.faqRefId === "shipping"
+        ? "shipping_policy"
+        : policyHint.faqRefId === "returns"
+        ? "return_policy"
+        : intent
+      : intent,
+    analysis: queryAnalysis,
+    context,
+    tenantId: scopedTenantId,
+  });
+  if (liveFallback) {
+    return liveFallback;
+  }
+
   const { queryTokens, queryEmbedding, docs, retrievalMeta } = await retrieve(trimmed, {
     analysis: queryAnalysis,
     context,
@@ -1024,6 +1106,9 @@ const chat = async ({ message, context = {}, actor = null, tenantId = "public", 
   }
 
   try {
+    if (!config.geminiApiKey) {
+      return initialResult;
+    }
     const recentMessages = context.recentMessages || [];
     const scopedTenantId = normalizeTenantId(tenantId, config.defaultTenantId || "public");
     

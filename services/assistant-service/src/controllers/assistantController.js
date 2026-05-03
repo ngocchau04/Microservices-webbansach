@@ -1,11 +1,22 @@
 const chatService = require("../services/chatService");
 const { runReindex, loadDefaultFaq } = require("../services/reindexService");
+const { rebuildGraphIndex } = require("../services/graphIndexService");
+const { chatByImage } = require("../services/imageChatService");
 const { sendServiceResult } = require("../utils/http");
 
 const chat = async (req, res) => {
+  const context = req.body?.context && typeof req.body.context === "object" ? req.body.context : {};
+  const currentProductId = String(req.body?.currentProductId || "").trim();
+  if (currentProductId && !context.currentProductId) {
+    context.currentProductId = currentProductId;
+  }
+  if (currentProductId && !context.lastProductId) {
+    context.lastProductId = currentProductId;
+  }
+
   const result = await chatService.chat({
     message: req.body?.message,
-    context: req.body?.context && typeof req.body.context === "object" ? req.body.context : {},
+    context,
     tenantId: req.tenantId,
     actor: req.user || null,
     config: req.app.locals.config || {},
@@ -15,6 +26,23 @@ const chat = async (req, res) => {
 
 const reindex = async (req, res) => {
   const result = await runReindex(req.app.locals.config, req.tenantId);
+  return sendServiceResult(res, result);
+};
+
+const graphReindex = async (req, res) => {
+  const result = await rebuildGraphIndex({
+    tenantId: req.tenantId,
+    config: req.app.locals.config || {},
+  });
+  return sendServiceResult(res, result);
+};
+
+const chatImage = async (req, res) => {
+  const result = await chatByImage({
+    message: req.body?.message || "",
+    imageBuffer: req.file?.buffer || null,
+    tenantId: req.tenantId,
+  });
   return sendServiceResult(res, result);
 };
 
@@ -46,5 +74,7 @@ const suggestions = async (req, res) => {
 module.exports = {
   chat,
   reindex,
+  graphReindex,
+  chatImage,
   suggestions,
 };

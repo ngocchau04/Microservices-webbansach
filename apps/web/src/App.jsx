@@ -14,6 +14,7 @@ import { useEffect } from "react";
 import { useUser } from "./context/UserContext";
 import PaymentPage from "./pages/Order/PaymentPage";
 import Chat from "./components/Chat";
+import { refreshToken as refreshAuthToken, getMe as getCurrentProfile } from "./api/authApi";
 
 function App() {
   const { user, setUser } = useUser();
@@ -46,7 +47,9 @@ function App() {
   }, []);
 
   return (
-      <BrowserRouter>
+      <BrowserRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <Routes>
           <Route path="/book/:id" element={<BookDetail />} />
           <Route path="/login" element={<LoginPage />} />

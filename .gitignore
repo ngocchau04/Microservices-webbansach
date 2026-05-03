@@ -49,3 +49,14 @@ coverage/
 
 # Docker
 docker-compose.override.yml
+
+# Python / image-search artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+services/image-search-service/.venv/
+services/image-search-service/data/vectors.json
+services/image-search-service/data/*.bin
+services/image-search-service/data/*.sqlite*
+services/image-search-service/models/
