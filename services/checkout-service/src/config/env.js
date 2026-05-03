@@ -46,6 +46,7 @@ const getEnvConfig = () => ({
   momoPartnerName: process.env.MOMO_PARTNER_NAME || "Bookstore",
   momoStoreId: process.env.MOMO_STORE_ID || "Bookstore",
   momoRequestType: process.env.MOMO_REQUEST_TYPE || "captureWallet",
+  momoDemoMode: String(process.env.MOMO_DEMO_MODE || "false").trim().toLowerCase() === "true",
   appBaseUrl: trimSlash(process.env.APP_BASE_URL || DEFAULT_APP_BASE_URL),
   apiBaseUrl: trimSlash(process.env.API_BASE_URL || DEFAULT_API_BASE_URL),
   vnpayReturnPath: process.env.VNPAY_RETURN_PATH || "/api/checkout/payments/vnpay/return",

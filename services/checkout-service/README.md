@@ -44,6 +44,10 @@ npm run seed
 - `NOTIFICATION_REQUEST_TIMEOUT_MS`
 - `MOCK_PAYMENT_PROVIDER`
 - `PAYMENT_WEBHOOK_SECRET`
+- `MOMO_DEMO_MODE`
+
+## MoMo demo mode
+- Set `MOMO_DEMO_MODE=true` to keep the MoMo option in the UI but complete payment through the internal demo-success flow instead of the external MoMo QR page.
 
 ## Internal dependencies
 - MongoDB (`book_checkout` logical DB)

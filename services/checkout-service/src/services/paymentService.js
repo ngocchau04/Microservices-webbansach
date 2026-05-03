@@ -184,13 +184,14 @@ const createPayment = async ({ requester, payload, config }) => {
   }
 
   if (provider === "momo") {
+    const forceMomoDemoMode = Boolean(config.momoDemoMode);
     const hasMomoCredentials = Boolean(
       config.momoPartnerCode && config.momoAccessKey && config.momoSecretKey
     );
     let momoCheckout;
     let checkoutUrl;
 
-    if (hasMomoCredentials) {
+    if (!forceMomoDemoMode && hasMomoCredentials) {
       try {
         momoCheckout = await createMomoPaymentUrl({
           transaction,
@@ -216,7 +217,10 @@ const createPayment = async ({ requester, payload, config }) => {
     transaction.metadata = {
       ...transaction.metadata,
       checkoutUrl,
-      mode: hasMomoCredentials ? "momo-live-test" : "momo-demo-fallback",
+      mode:
+        !forceMomoDemoMode && hasMomoCredentials
+          ? "momo-live-test"
+          : "momo-demo-fallback",
       momoOrderId: momoCheckout?.orderId || null,
       momoRequestId: momoCheckout?.requestId || null,
       momoExtraData: momoCheckout?.extraData || null,
@@ -232,7 +236,7 @@ const createPayment = async ({ requester, payload, config }) => {
         payment: transaction,
         mode: "online",
         provider,
-        fallbackMode: hasMomoCredentials ? "gateway" : "demo",
+        fallbackMode: !forceMomoDemoMode && hasMomoCredentials ? "gateway" : "demo",
         checkoutUrl,
       },
       legacy: {
