@@ -253,10 +253,7 @@ const runLiveCatalogFallback = async ({ message, intent, analysis, context = {},
       .map((x) => x.item);
 
     if (!ranked.length) {
-      return buildReply({
-        mainAnswer: `Hien tai kho sach chua co ket qua phu hop voi tu khoa "${keyword}".`,
-        fallback: true,
-      });
+      return null;
     }
 
     return buildReply({

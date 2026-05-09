@@ -2,6 +2,8 @@ process.env.NODE_ENV = "test";
 process.env.MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017";
 process.env.ASSISTANT_DB_NAME = "book_assistant_jest";
 process.env.JWT_SECRET = "assistant_test_secret";
+process.env.GEMINI_API_KEY = "";
+
 
 const request = require("supertest");
 const jwt = require("jsonwebtoken");
@@ -10,6 +12,21 @@ const { app } = require("../src/index");
 const { connectDatabase } = require("../src/config/database");
 const { CorpusDocument } = require("../src/models/CorpusDocument");
 const { normalize } = require("../src/services/retrievalService");
+
+// Mock external services to prevent network/quota failures in CI
+jest.mock("../src/utils/catalogClient", () => ({
+  searchProducts: jest.fn().mockResolvedValue([]),
+  getProductDetails: jest.fn().mockResolvedValue(null),
+  listTopProducts: jest.fn().mockResolvedValue([]),
+  getReviews: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock("../src/services/geminiService", () => ({
+  generateAssistantResponse: jest.fn().mockResolvedValue({ type: "text", text: "Mocked AI response" }),
+  generateEmbedding: jest.fn().mockResolvedValue(new Array(768).fill(0)),
+  generateBatchEmbeddings: jest.fn().mockResolvedValue([]),
+}));
+
 
 describe("assistant-service smoke", () => {
   const tenantId = "tenant_smoke";
