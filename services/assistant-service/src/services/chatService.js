@@ -312,29 +312,6 @@ const chatInternal = async ({ message, context = {}, actor = null, tenantId = "p
     }
   }
 
-  const liveFallback = await runLiveCatalogFallback({
-    message: trimmed,
-    intent: policyHint
-      ? policyHint.faqRefId === "shipping"
-        ? "shipping_policy"
-        : policyHint.faqRefId === "returns"
-        ? "return_policy"
-        : intent
-      : intent,
-    analysis: queryAnalysis,
-    context,
-    tenantId: scopedTenantId,
-  });
-  if (liveFallback) {
-    return liveFallback;
-  }
-
-  const { queryTokens, queryEmbedding, docs, retrievalMeta } = await retrieve(trimmed, {
-    analysis: queryAnalysis,
-    context,
-    tenantId: scopedTenantId,
-  });
-
   if (wantsHumanSupport) {
     if (!String(actor?.userId || "").trim()) {
       const payload = {
@@ -412,6 +389,29 @@ const chatInternal = async ({ message, context = {}, actor = null, tenantId = "p
       };
     }
   }
+
+  const liveFallback = await runLiveCatalogFallback({
+    message: trimmed,
+    intent: policyHint
+      ? policyHint.faqRefId === "shipping"
+        ? "shipping_policy"
+        : policyHint.faqRefId === "returns"
+        ? "return_policy"
+        : intent
+      : intent,
+    analysis: queryAnalysis,
+    context,
+    tenantId: scopedTenantId,
+  });
+  if (liveFallback) {
+    return liveFallback;
+  }
+
+  const { queryTokens, queryEmbedding, docs, retrievalMeta } = await retrieve(trimmed, {
+    analysis: queryAnalysis,
+    context,
+    tenantId: scopedTenantId,
+  });
 
   const catalogDocs = docs.filter((d) => d.sourceType === "catalog");
   const faqDocs = docs.filter((d) => d.sourceType === "faq");
