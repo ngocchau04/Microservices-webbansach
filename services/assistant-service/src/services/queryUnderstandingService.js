@@ -113,15 +113,15 @@ const CONCEPT_DEFINITIONS = {
     expansions: ["san pham dang xem"],
   },
   sort_price_asc: {
-    aliases: ["re nhat", "gia thap nhat", "it tien nhat", "tiet kiem nhat", "gia mem nhat"],
+    aliases: ["re nhat", "gia thap nhat", "it tien nhat", "tiet kiem nhat", "gia mem nhat", "re nhat shop", "re nhất"],
     expansions: ["gia thap nhat"],
   },
   sort_price_desc: {
-    aliases: ["dat nhat", "gia cao nhat", "cao cap nhat", "xa xi nhat"],
+    aliases: ["dat nhat", "gia cao nhat", "cao cap nhat", "xa xi nhat", "mat nhat", "dat nhat shop", "dat nhất"],
     expansions: ["gia cao nhat"],
   },
   sort_popularity_desc: {
-    aliases: ["ban chay nhat", "hot nhat", "pho bien nhat", "duoc mua nhieu nhat"],
+    aliases: ["ban chay nhat", "hot nhat", "pho bien nhat", "duoc mua nhieu nhat", "nhieu nguoi mua nhat", "chay nhat"],
     expansions: ["ban chay nhat"],
   },
   sort_date_desc: {

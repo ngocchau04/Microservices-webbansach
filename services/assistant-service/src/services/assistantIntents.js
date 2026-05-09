@@ -24,7 +24,12 @@ const detectIntentDetailed = (raw = "", options = {}) => {
     related_next: 0,
     recommend: 0,
     search: 0.8,
+    general: 0.1,
   };
+
+  if (/^(chao|hi|hello|xin chao|ban la ai|ten la gi|hey)/.test(nf)) {
+    scores.general += 10;
+  }
 
   if (concepts.has("explain")) {
     scores.explain += 8;

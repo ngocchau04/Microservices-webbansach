@@ -29,7 +29,7 @@ const { buildAdminCopilotChatResult, isAdminCopilotContext } = require("./adminC
 const catalogClient = require("../utils/catalogClient");
 
 const FALLBACK_MESSAGE =
-  "Mình chưa đủ tự tin để trả lời chắc chắn từ dữ liệu Bookie hiện tại. Bạn có thể nói rõ hơn theo tác giả, thể loại, mức giá, hoặc mục tiêu học để mình gợi ý đúng hơn.";
+  "Hiện tại mình chưa tìm thấy thông tin chính xác cho yêu cầu này. Bạn có thể thử tìm theo tên sách, tác giả hoặc chủ đề khác được không?";
 
 const formatPrice = (value) => {
   if (value === undefined || value === null || Number.isNaN(Number(value))) {
@@ -96,12 +96,7 @@ const buildSessionHints = (recs, focusDoc) => {
 };
 
 const composeMessage = ({ mainAnswer, whyExplanation, followUpChips }) => {
-  let m = mainAnswer;
-  // Bỏ phần tự động nối whyExplanation vào tin nhắn chính trong môi trường deploy
-  if (followUpChips && followUpChips.length) {
-    m += `\n\n👉 Bạn có thể hỏi tiếp: ${followUpChips.map((c) => c.label).join(" · ")}`;
-  }
-  return m.trim();
+  return mainAnswer.trim();
 };
 
 const wantsRecommendationHeuristic = (raw = "") => {
@@ -1036,19 +1031,36 @@ const chatInternal = async ({ message, context = {}, actor = null, tenantId = "p
   }
 
 
-  /** ---------- recommend / bán chạy ---------- */
-  if (intent === "recommend" || wantsRecommendationHeuristic(trimmed)) {
-    const recDocs = await pickRecommendations(queryTokens, queryAnalysis.concepts, scopedTenantId);
+  /** ---------- recommend / bán chạy / giá rẻ nhất / đắt nhất ---------- */
+  const isSortingConcept = queryAnalysis.concepts.some(c => c.startsWith("sort_"));
+  if (intent === "recommend" || wantsRecommendationHeuristic(trimmed) || isSortingConcept) {
+    let recDocs;
+    let badge = BADGE.popular;
+    let mainMessage = "Dưới đây là một số tựa sách nổi bật dành cho bạn:";
+
+    if (queryAnalysis.concepts.includes("sort_price_asc")) {
+      recDocs = await findRankedCatalog({ tenantId: scopedTenantId, concepts: ["sort_price_asc"] });
+      badge = BADGE.cheaper;
+      mainMessage = "Đây là những cuốn sách có mức giá tốt nhất tại cửa hàng:";
+    } else if (queryAnalysis.concepts.includes("sort_price_desc")) {
+      recDocs = await findRankedCatalog({ tenantId: scopedTenantId, concepts: ["sort_price_desc"] });
+      badge = "Cao cấp";
+      mainMessage = "Dưới đây là những tựa sách cao cấp nhất hiện có:";
+    } else if (queryAnalysis.concepts.includes("sort_popularity_desc")) {
+      recDocs = await findRankedCatalog({ tenantId: scopedTenantId, concepts: ["sort_popularity_desc"] });
+      badge = BADGE.popular;
+      mainMessage = "Đây là danh sách các đầu sách bán chạy nhất và được yêu thích nhất:";
+    } else {
+      recDocs = await pickRecommendations(queryTokens, queryAnalysis.concepts, scopedTenantId);
+    }
+
     const recs = recDocs.map((d) =>
-      mapRecommendation(d, BADGE.popular, {
-        reasonLine: "Ưu tiên theo soldCount sau khi cộng điểm khớp từ khóa (nếu có).",
-        badges: [BADGE.popular],
+      mapRecommendation(d, badge, {
+        reasonLine: "Gợi ý dựa trên tiêu chí bạn đang quan tâm.",
+        badges: [badge],
       })
     );
-    const main =
-      recs.length > 0
-        ? `Một số đầu sách đang được ưu tiên gợi ý (xếp hạng hybrid: độ phổ biến + khớp từ khóa):`
-        : FALLBACK_MESSAGE;
+    const main = recs.length > 0 ? mainMessage : FALLBACK_MESSAGE;
     const payload = {
       mainAnswer: main,
       whyExplanation: recs.length
@@ -1091,7 +1103,7 @@ const chatInternal = async ({ message, context = {}, actor = null, tenantId = "p
   return {
     ok: true,
     statusCode: 200,
-    data: { ...payload, message: composeMessage(payload) },
+    data: { ...payload, message: composeMessage(payload), intentInfo },
   };
 };
 
@@ -1117,8 +1129,10 @@ const chat = async ({ message, context = {}, actor = null, tenantId = "public", 
       contextDocs: await _getDocsFromIds(initialResult.data, scopedTenantId),
       recentMessages,
       currentMessage: message,
-      intent: initialResult.data.graphReasoningInfo?.pathsUsed?.[0]?.intent || "general",
+      intent: initialResult.data.graphReasoningInfo?.pathsUsed?.[0]?.intent || initialResult.data.intentInfo?.intent || "general",
       toolsAvailable: true,
+      isFallback: !!initialResult.data.fallback,
+      user: actor
     });
 
     // Step 3: Tool Execution Loop (Handle one round of tool calls)

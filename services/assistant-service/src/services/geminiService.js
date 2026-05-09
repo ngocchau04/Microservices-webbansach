@@ -98,17 +98,19 @@ const generateAssistantResponse = async ({
   currentMessage = "",
   intent = "",
   toolsAvailable = false, // Toggle tool use
+  isFallback = false,
+  user = null,
 }) => {
   const llm = initGemini();
   if (!llm) return null;
 
   try {
-    const config = { model: "gemini-1.5-flash" };
+    const config = { model: "gemini-flash-latest" };
     if (toolsAvailable) {
       config.tools = TOOLS;
     }
     
-    const model = llm.getGenerativeModel(config, { apiVersion: "v1" });
+    const model = llm.getGenerativeModel(config);
 
     const contextText = contextDocs
       .slice(0, 10)
@@ -129,28 +131,33 @@ const generateAssistantResponse = async ({
       .map((m) => `${m.role === "assistant" ? "Bookie" : "Khách"}: ${m.text}`)
       .join("\n");
 
-    const prompt = `Bạn là Bookie, chuyên gia tư vấn bán hàng chuyên nghiệp của cửa hàng sách.
-MỤC TIÊU: Lắng nghe nhu cầu khách hàng, bóc tách ý định thông minh và gợi ý những cuốn sách phù hợp nhất.
+    const prompt = `Bạn là Bookie, Chuyên gia tư vấn và Trợ lý mua sắm thông minh của hệ thống hiệu sách Microservices-Webbansach.
 
-PHONG CÁCH:
-- Thân thiện, chuyên nghiệp, ngôn ngữ tự nhiên.
-- Luôn giải thích TẠI SAO bạn gợi ý cuốn sách đó dựa trên nhu cầu của khách.
+MỤC TIÊU:
+1. Tư vấn và thuyết phục khách hàng tìm được cuốn sách ưng ý nhất dựa trên nhu cầu, sở thích và mục tiêu học tập của họ.
+2. Cung cấp thông tin chính xác về chính sách cửa hàng (vận chuyển, đổi trả).
+3. Luôn giữ thái độ thân thiện, nhiệt tình và am hiểu sâu sắc về lĩnh vực sách.
 
 QUY TẮC CỐT LÕI (BẮT BUỘC):
-1. KHÔNG TỰ CHẾ SÁCH: Chỉ được gợi ý các cuốn sách có ID và tiêu đề xuất hiện trong dữ liệu Ngữ cảnh hoặc kết quả từ công cụ \`search_books\`. Tuyệt đối không được bịa ra tên sách hoặc tác giả không có trong CSDL.
-2. NẾU KHÔNG CÓ SÁCH: Nếu tìm kiếm không trả về kết quả phù hợp, hãy nói rõ là "Hiện tại kho sách của Bookie chưa có đầu sách chính xác như bạn tìm" và gợi ý các chủ đề liên quan nhất đang có sẵn.
-3. MINH BẠCH: Giải thích rõ ràng bạn tìm thấy sách này dựa trên tiêu chí nào của khách.
+- CHỈ GỢI Ý SÁCH CÓ TRẬT TỰ: Chỉ được gợi ý các cuốn sách có ID (refId) và tiêu đề xuất hiện trong dữ liệu Ngữ cảnh hoặc kết quả từ công cụ. Tuyệt đối không được bịa ra tên sách hoặc tác giả không có trong CSDL.
+- NẾU KHÔNG CÓ KẾT QUẢ: Đừng bao giờ nói "Tôi không biết". Thay vào đó, hãy dùng công cụ \`search_books\` để tìm kiếm rộng hơn hoặc gợi ý những chủ đề liên quan nhất đang có sẵn.
+- TƯ VẤN CÓ CHIỀU SÂU: Thay vì chỉ liệt kê danh sách, hãy giải thích TẠI SAO cuốn sách này lại phù hợp với yêu cầu của khách (ví dụ: "Vì bạn đang tìm hiểu về React cho người mới, cuốn X có lộ trình từ cơ bản...").
+- KHUYẾN KHÍCH HÀNH ĐỘNG: Gợi ý khách hàng xem chi tiết sản phẩm hoặc thêm vào giỏ hàng nếu họ có vẻ ưng ý.
 
---- DỮ LIỆU NGỮ CẢNH ---
-${contextText || "(Đang tìm kiếm thêm dữ liệu...)"}
+--- THÔNG TIN NGƯỜI DÙNG (Để chào hỏi và tư vấn cá nhân hóa) ---
+${user ? `Khách hàng: ${user.fullName || user.name || "Khách"} ${user.address ? `| Địa chỉ: ${user.address}` : ""}` : "(Khách chưa đăng nhập)"}
+
+--- DỮ LIỆU NGỮ CẢNH (RAG Context) ---
+${contextText || "(Không có dữ liệu trực tiếp, hãy dùng công cụ tìm kiếm nếu cần)"}
 
 --- LỊCH SỬ TRÒ CHUYỆN ---
-${historyText || "(Hội thoại mới)"}
+${historyText || "(Hội thoại mới bắt đầu)"}
 
---- YÊU CẦU HIỆN TẠI (Intent: ${intent}) ---
-${currentMessage}
+--- YÊU CẦU HIỆN TẠI (Ý định: ${intent}) ---
+${isFallback ? "> LƯU Ý: Kết quả tìm kiếm hiện tại rất hạn chế hoặc không khớp. Vui lòng sử dụng công cụ `search_books` để tìm kiếm sâu hơn hoặc tư vấn dựa trên kiến thức chung nếu khách hàng chỉ đang trò chuyện xã giao." : ""}
+Câu hỏi của khách: "${currentMessage}"
 
-Hãy trả lời khách hàng một cách thông minh và thuyết phục:`;
+Hãy trả lời khách hàng một cách thông minh, tự nhiên và chuyên nghiệp nhất (Sử dụng Tiếng Việt):`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -172,7 +179,7 @@ const generateEmbedding = async (text = "") => {
   const llm = initGemini();
   if (!llm || !text.trim()) return null;
   try {
-    const model = llm.getGenerativeModel({ model: "embedding-001" }, { apiVersion: "v1" });
+    const model = llm.getGenerativeModel({ model: "gemini-embedding-2" });
     const result = await model.embedContent(text.trim());
     return result.embedding.values;
   } catch (error) {
@@ -185,7 +192,7 @@ const generateBatchEmbeddings = async (texts = []) => {
   const llm = initGemini();
   if (!llm || !texts.length) return [];
   try {
-    const model = llm.getGenerativeModel({ model: "embedding-001" }, { apiVersion: "v1" });
+    const model = llm.getGenerativeModel({ model: "gemini-embedding-2" });
     const result = await model.batchEmbedContents({
       requests: texts.map((t) => ({
         content: { role: "user", parts: [{ text: t.trim() }] },
@@ -207,8 +214,72 @@ const generateBatchEmbeddings = async (texts = []) => {
   }
 };
 
+const generateImageAnalysisResponse = async ({
+  imageBuffer = null,
+  message = "",
+  contextDocs = [],
+  tenantId = "public",
+  user = null,
+}) => {
+  const llm = initGemini();
+  if (!llm || !imageBuffer) return null;
+
+  try {
+    const model = llm.getGenerativeModel({ model: "gemini-flash-latest" });
+
+    const contextText = contextDocs
+      .slice(0, 5)
+      .map((doc, i) => {
+        const meta = doc.metadata || {};
+        return `[${i + 1}] ID: ${doc.refId} | Sách: "${meta.title || doc.title}" | Giá: ${meta.price} | Tóm tắt: ${doc.body?.slice(0, 150)}`;
+      })
+      .join("\n");
+
+    const prompt = `Bạn là trợ lý bán hàng chuyên nghiệp của Bookie.
+Khách hàng vừa gửi một tấm ảnh. Hãy phân tích nội dung tấm ảnh (ví dụ: bìa sách, một đoạn văn bản, hoặc một chủ đề liên quan đến sách).
+
+NHIỆM VỤ:
+1. Mô tả ngắn gọn bạn thấy gì trong ảnh.
+2. Dựa trên dữ liệu Ngữ cảnh (RAG) bên dưới, hãy xác định xem có cuốn sách nào trong kho của Bookie phù hợp với ảnh này không.
+3. Nếu có, hãy gợi ý và giải thích tại sao. Nếu không có cuốn nào chính xác, hãy gợi ý các chủ đề tương tự dựa trên những gì bạn thấy trong ảnh.
+4. Trả lời bằng tiếng Việt, thân thiện và chuyên nghiệp.
+
+QUY TẮC:
+- Không bịa tên sách. Chỉ gợi ý sách có trong Ngữ cảnh.
+- Nếu không thấy sách, hãy tư vấn dựa trên chủ đề của ảnh.
+
+--- THÔNG TIN NGƯỜI DÙNG ---
+${user ? `Khách hàng: ${user.fullName || user.name || "Khách"} ${user.address ? `| Địa chỉ: ${user.address}` : ""}` : "(Khách chưa đăng nhập)"}
+
+--- DỮ LIỆU NGỮ CẢNH (RAG Context) ---
+${contextText || "(Không có dữ liệu ngữ cảnh trực tiếp)"}
+
+--- CÂU HỎI KÈM THEO CỦA KHÁCH ---
+${message || "Khách không để lại lời nhắn kèm ảnh."}
+
+Hãy phân tích ảnh và tư vấn khách hàng:`;
+
+    const imageParts = [
+      {
+        inlineData: {
+          data: imageBuffer.toString("base64"),
+          mimeType: "image/jpeg", // Assuming JPEG, but could be dynamic
+        },
+      },
+    ];
+
+    const result = await model.generateContent([prompt, ...imageParts]);
+    const response = await result.response;
+    return response.text();
+  } catch (error) {
+    console.error("[GeminiService] Image analysis error:", error.message);
+    return null;
+  }
+};
+
 module.exports = {
   generateAssistantResponse,
+  generateImageAnalysisResponse,
   generateEmbedding,
   generateBatchEmbeddings,
 };

@@ -1,5 +1,4 @@
-const imageSearchClient = require("../utils/imageSearchClient");
-const catalogClient = require("../utils/catalogClient");
+
 const { graphTraverseRecommendations } = require("./graphTraversalService");
 const { normalizeTenantId } = require("./tenantContextService");
 
@@ -23,7 +22,7 @@ const mapProduct = (product, reason, score = null) => ({
   score,
 });
 
-const chatByImage = async ({ message = "", imageBuffer, tenantId = "public" }) => {
+const chatByImage = async ({ message = "", imageBuffer, tenantId = "public", actor = null }) => {
   const scopedTenantId = normalizeTenantId(tenantId, "public");
   if (!imageBuffer || !Buffer.isBuffer(imageBuffer)) {
     return {
@@ -34,100 +33,28 @@ const chatByImage = async ({ message = "", imageBuffer, tenantId = "public" }) =
     };
   }
 
-  const matchesResult = await imageSearchClient.searchByImageBuffer(imageBuffer, 6);
-  if (!matchesResult.ok) {
-    return {
-      ok: true,
-      statusCode: 200,
-      data: {
-        message:
-          "Hiện tính năng tìm sách bằng ảnh chưa sẵn sàng. Bạn có thể nhập tên sách hoặc chủ đề để mình tìm giúp.",
-        mainAnswer:
-          "Hiện tính năng tìm sách bằng ảnh chưa sẵn sàng. Bạn có thể nhập tên sách hoặc chủ đề để mình tìm giúp.",
-        recommendations: [],
-        fallback: true,
-        followUpChips: [{ id: "search_text", label: "Tim sach React" }],
-      },
-    };
-  }
+  // Direct Gemini Vision processing
+  const { generateImageAnalysisResponse } = require("./geminiService");
+  const aiAnalysis = await generateImageAnalysisResponse({
+    imageBuffer,
+    message,
+    contextDocs: [],
+    tenantId: scopedTenantId,
+    user: actor
+  });
 
-  const matches = Array.isArray(matchesResult.data?.matches) ? matchesResult.data.matches : [];
-  if (!matches.length) {
-    return {
-      ok: true,
-      statusCode: 200,
-      data: {
-        message: "Mình chưa tìm thấy sách phù hợp từ ảnh bạn gửi.",
-        mainAnswer: "Mình chưa tìm thấy sách phù hợp từ ảnh bạn gửi.",
-        recommendations: [],
-        fallback: true,
-      },
-    };
-  }
-
-  const products = [];
-  for (const m of matches) {
-    const product = await catalogClient.getProductDetails(m.productId, scopedTenantId);
-    if (product) {
-      products.push({ product, score: m.score });
-    }
-  }
-  if (!products.length) {
-    return {
-      ok: true,
-      statusCode: 200,
-      data: {
-        message: "Mình nhận diện được ảnh nhưng chưa lấy được thông tin sản phẩm chi tiết.",
-        mainAnswer: "Mình nhận diện được ảnh nhưng chưa lấy được thông tin sản phẩm chi tiết.",
-        recommendations: [],
-        fallback: true,
-      },
-    };
-  }
-
-  const anchor = products[0].product;
-  const graphIntent = detectGraphIntentFromMessage(message);
-
-  if (graphIntent) {
-    const graphResult = await graphTraverseRecommendations({
-      tenantId: scopedTenantId,
-      currentProductId: String(anchor._id),
-      intent: graphIntent,
-      limit: 5,
-    });
-    if (graphResult.ok && graphResult.data?.recommendations?.length) {
-      return {
-        ok: true,
-        statusCode: 200,
-        data: {
-          message:
-            "Đầu tiên mình nhận diện ảnh gần với một cuốn trong kho, sau đó mở rộng theo đồ thị để lấy gợi ý phù hợp hơn.",
-          mainAnswer:
-            "Đầu tiên mình nhận diện ảnh gần với một cuốn trong kho, sau đó mở rộng theo đồ thị để lấy gợi ý phù hợp hơn.",
-          recommendations: graphResult.data.recommendations,
-          fallback: false,
-          graphReasoningInfo: {
-            expandedBy: graphIntent,
-            anchorProductId: String(anchor._id),
-          },
-        },
-      };
-    }
-  }
+  const fallbackMsg = "Xin lỗi, hiện tại mình không thể phân tích ảnh. Bạn có thể thử lại bằng cách gõ tên sách nhé.";
 
   return {
     ok: true,
     statusCode: 200,
     data: {
-      message: "Mình tìm thấy một số sách có bìa hoặc nội dung gần giống ảnh bạn gửi:",
-      mainAnswer: "Mình tìm thấy một số sách có bìa hoặc nội dung gần giống ảnh bạn gửi:",
-      recommendations: products.slice(0, 5).map((x) =>
-        mapProduct(x.product, "Ảnh bìa có độ tương đồng cao với ảnh bạn gửi.", x.score)
-      ),
-      fallback: false,
+      message: aiAnalysis || fallbackMsg,
+      mainAnswer: aiAnalysis || fallbackMsg,
+      recommendations: [],
+      fallback: !aiAnalysis,
       graphReasoningInfo: {
-        expandedBy: "image_similarity",
-        anchorProductId: String(anchor._id),
+        expandedBy: "gemini_vision_direct"
       },
     },
   };

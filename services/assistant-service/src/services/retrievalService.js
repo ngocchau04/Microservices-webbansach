@@ -117,7 +117,7 @@ const retrieve = async (message, options = {}) => {
   const tenantId = resolveTenantId(options.tenantId);
   const analysis = options.analysis || analyzeQuery(message, { context });
   const queryTokens = analysis.expandedTokens || tokenize(analysis.rewrittenQuery || message);
-  const cleanKeywordQuery = analysis.baseTokens.join(" "); 
+  const cleanKeywordQuery = (analysis.baseTokens || []).join(" "); 
 
   const queryEmbedding = await generateEmbedding(cleanKeywordQuery || message);
 

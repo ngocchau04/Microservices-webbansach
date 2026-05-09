@@ -42,6 +42,7 @@ const chatImage = async (req, res) => {
     message: req.body?.message || "",
     imageBuffer: req.file?.buffer || null,
     tenantId: req.tenantId,
+    actor: req.user || null,
   });
   return sendServiceResult(res, result);
 };

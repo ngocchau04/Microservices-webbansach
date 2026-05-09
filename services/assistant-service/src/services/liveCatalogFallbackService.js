@@ -30,12 +30,12 @@ const formatPrice = (value) => {
 };
 
 const buildProductReason = ({ mode, keyword, anchor }) => {
-  if (mode === "search") return `Phu hop vi co lien quan den "${keyword}" trong tieu de/tac gia/mo ta.`;
-  if (mode === "popular") return "Goi y dua tren du lieu san pham hien co (uu tien soldCount/rating).";
-  if (mode === "same_author") return `Cung tac gia voi "${anchor?.title || "cuon dang xem"}".`;
-  if (mode === "same_category") return `Cung the loai voi "${anchor?.title || "cuon dang xem"}".`;
-  if (mode === "cheaper") return `Gia thap hon ${formatPrice(anchor?.price)}${anchor?.type ? " trong cung the loai" : ""}.`;
-  return "Lien quan den nhu cau cua ban.";
+  if (mode === "search") return `Phù hợp với tìm kiếm "${keyword}".`;
+  if (mode === "popular") return "Được nhiều độc giả yêu thích.";
+  if (mode === "same_author") return `Cùng tác giả với cuốn "${anchor?.title || "bạn đang xem"}".`;
+  if (mode === "same_category") return `Cùng thể loại với cuốn "${anchor?.title || "bạn đang xem"}".`;
+  if (mode === "cheaper") return `Mức giá tốt hơn ${formatPrice(anchor?.price)}.`;
+  return "Gợi ý phù hợp cho bạn.";
 };
 
 const toRecommendation = (item, reason) => ({
@@ -86,10 +86,9 @@ const buildReply = ({
 });
 
 const POLICY_SHIPPING =
-  "Don hang duoc xu ly trong gio lam viec. Thoi gian giao hang phu thuoc khu vuc; ban co the theo doi trang thai trong muc don hang sau khi dat thanh cong.";
-
+  "Đơn hàng của bạn sẽ được xử lý sớm nhất trong giờ làm việc. Bạn có thể theo dõi trạng thái vận chuyển trong mục 'Đơn hàng của tôi' nhé.";
 const POLICY_RETURNS =
-  "Theo logic hien tai: chi co the yeu cau tra hang khi don o trang thai da nhan (received), trong vong 7 ngay sau khi xac nhan nhan hang. Don da completed thi khong tra hang. Sau khi danh gia thanh cong, don duoc chuyen completed.";
+  "Bạn có thể yêu cầu đổi trả trong vòng 7 ngày kể từ khi nhận hàng nếu sản phẩm có lỗi hoặc không đúng mô tả. Đội ngũ Bookie sẽ hỗ trợ bạn nhiệt tình!";
 
 const buildSessionHints = (items = [], anchor = null) => {
   const top = anchor || items[0];
@@ -216,7 +215,7 @@ const runLiveCatalogFallback = async ({ message, intent, analysis, context = {},
       });
     }
     return buildReply({
-      mainAnswer: "Hien minh goi y dua tren du lieu san pham hien co (uu tien soldCount/rating).",
+      mainAnswer: "Dưới đây là một số tựa sách nổi bật và đang được yêu thích tại Bookie:",
       recommendations: items.map((item) => toRecommendation(item, buildProductReason({ mode: "popular" }))),
       followUpChips: [
         { id: "same_category", label: "Cung the loai" },
@@ -261,7 +260,7 @@ const runLiveCatalogFallback = async ({ message, intent, analysis, context = {},
     }
 
     return buildReply({
-      mainAnswer: `Minh tim thay ${ranked.length} cuon lien quan "${keyword}".`,
+      mainAnswer: `Mình tìm thấy ${ranked.length} cuốn sách rất phù hợp với từ khóa "${keyword}" của bạn:`,
       recommendations: ranked.map((item) => toRecommendation(item, buildProductReason({ mode: "search", keyword }))),
       followUpChips: [
         { id: "popular", label: "Goi y sach ban chay" },
