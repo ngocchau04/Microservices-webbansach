@@ -22,7 +22,7 @@ services:
     container_name: book-identity-service
     restart: unless-stopped
     env_file:
-      - ./services/identity-service/.env
+      - ./services/identity-service/.env.example
     environment:
       - MONGO_URI=mongodb://mongo:27017
       - IDENTITY_DB_NAME=book_identity
@@ -203,7 +203,7 @@ services:
     container_name: book-assistant-service
     restart: unless-stopped
     env_file:
-      - ./services/assistant-service/.env
+      - ./services/assistant-service/.env.example
     environment:
       - MONGO_URI=mongodb://mongo:27017
       - ASSISTANT_DB_NAME=book_assistant
