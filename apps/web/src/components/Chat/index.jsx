@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IoChatbubbleEllipsesOutline } from "react-icons/io5";
+import { MdOutlineFullscreen, MdOutlineFullscreenExit } from "react-icons/md";
 import {
   fetchAssistantSuggestions,
   sendAssistantChat,
@@ -88,6 +89,7 @@ function Chat() {
   const [supportState, setSupportState] = useState(loadSupportState);
   const [selectedImage, setSelectedImage] = useState(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState("");
+  const [maximized, setMaximized] = useState(false);
   
   // Dragging State
   // Dragging State
@@ -384,6 +386,25 @@ function Chat() {
     }
   };
 
+  const handlePaste = (event) => {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) {
+          if (file.size > 5 * 1024 * 1024) {
+            appendMessage("assistant", { text: "Ảnh từ clipboard vượt quá 5MB. Vui lòng chọn ảnh nhỏ hơn." });
+            continue;
+          }
+          setSelectedImage(file);
+          setSelectedImagePreview(URL.createObjectURL(file));
+        }
+      }
+    }
+  };
+
   useEffect(() => {
     if (!open || supportState.mode !== "human" || !supportState.conversationId || !user?._id) {
       return undefined;
@@ -398,11 +419,11 @@ function Chat() {
       {open && (
         <div
           ref={panelRef}
-          className={`chat-panel ${isDragging ? "dragging" : ""}`}
+          className={`chat-panel ${isDragging ? "dragging" : ""} ${maximized ? "maximized" : ""}`}
           role="dialog"
           aria-label="Trợ lý Bookie"
           onClick={(e) => e.stopPropagation()}
-          style={{
+          style={maximized ? { transform: 'none' } : {
             transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
           }}
         >
@@ -411,14 +432,25 @@ function Chat() {
               <span className="chat-panel-title">Trợ lý Bookie</span>
               <span className="chat-panel-sub">Hỗ trợ mua sắm &amp; Tư vấn trực tuyến</span>
             </div>
-            <button
-              type="button"
-              className="chat-panel-close"
-              onClick={() => setOpen(false)}
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              ×
-            </button>
+            <div className="chat-panel-header-actions">
+              <button
+                type="button"
+                className="chat-panel-action"
+                onClick={() => setMaximized(!maximized)}
+                title={maximized ? "Thu nhỏ" : "Phóng to"}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                {maximized ? <MdOutlineFullscreenExit /> : <MdOutlineFullscreen />}
+              </button>
+              <button
+                type="button"
+                className="chat-panel-close"
+                onClick={() => setOpen(false)}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                ×
+              </button>
+            </div>
           </div>
           {supportState.mode === "human" ? (
             <div className="chat-support-banner" role="status" aria-live="polite">
@@ -580,6 +612,7 @@ function Chat() {
                   handleSend();
                 }
               }}
+              onPaste={handlePaste}
               disabled={loading}
             />
             <button type="button" className="chat-panel-send" onClick={handleSend} disabled={loading}>

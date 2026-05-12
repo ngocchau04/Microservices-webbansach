@@ -1,6 +1,6 @@
 
 async function run() {
-  const key = "AIzaSyDvjJrQkjvAqwbcS7k-AJtWXZDZmZ6xq7o";
+  const key = "AIzaSyDJON-_GAaxPs-_Dr3OlyaNZoT6QxnUTRU";
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
     const data = await response.json();

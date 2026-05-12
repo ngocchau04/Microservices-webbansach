@@ -105,6 +105,7 @@ const generateAssistantResponse = async ({
   if (!llm) return null;
 
   try {
+    // Switch to gemini-2.0-flash as gemini-1.5-flash is not available here
     const config = { model: "gemini-flash-latest" };
     if (toolsAvailable) {
       config.tools = TOOLS;
@@ -220,39 +221,44 @@ const generateImageAnalysisResponse = async ({
   contextDocs = [],
   tenantId = "public",
   user = null,
+  toolsAvailable = false,
 }) => {
   const llm = initGemini();
   if (!llm || !imageBuffer) return null;
 
   try {
-    const model = llm.getGenerativeModel({ model: "gemini-flash-latest" });
+    const config = { model: "gemini-flash-latest" };
+    if (toolsAvailable) {
+      config.tools = TOOLS;
+    }
+    
+    const model = llm.getGenerativeModel(config);
 
     const contextText = contextDocs
-      .slice(0, 5)
+      .slice(0, 10)
       .map((doc, i) => {
         const meta = doc.metadata || {};
-        return `[${i + 1}] ID: ${doc.refId} | Sách: "${meta.title || doc.title}" | Giá: ${meta.price} | Tóm tắt: ${doc.body?.slice(0, 150)}`;
+        const title = meta.title || doc.title || "Không rõ";
+        const author = meta.author || "Nhiều tác giả";
+        const price = meta.price ? `${meta.price.toLocaleString("vi-VN")}đ` : "Đang cập nhật";
+        return `[${i + 1}] ID: ${doc.refId} | Sách: "${title}" | Tác giả: ${author} | Giá: ${price} | Tóm tắt: ${(doc.body || "").slice(0, 200)}`;
       })
       .join("\n");
 
-    const prompt = `Bạn là trợ lý bán hàng chuyên nghiệp của Bookie.
-Khách hàng vừa gửi một tấm ảnh. Hãy phân tích nội dung tấm ảnh (ví dụ: bìa sách, một đoạn văn bản, hoặc một chủ đề liên quan đến sách).
+    const prompt = `Bạn là Bookie, Chuyên gia tư vấn và Trợ lý mua sắm thông minh của hệ thống hiệu sách Microservices-Webbansach.
+Khách hàng vừa gửi một tấm ảnh. Hãy phân tích nội dung tấm ảnh (ví dụ: bìa sách, một đoạn văn bản, hoặc một chủ đề liên quan đến sách) và tư vấn cho họ.
 
 NHIỆM VỤ:
 1. Mô tả ngắn gọn bạn thấy gì trong ảnh.
-2. Dựa trên dữ liệu Ngữ cảnh (RAG) bên dưới, hãy xác định xem có cuốn sách nào trong kho của Bookie phù hợp với ảnh này không.
-3. Nếu có, hãy gợi ý và giải thích tại sao. Nếu không có cuốn nào chính xác, hãy gợi ý các chủ đề tương tự dựa trên những gì bạn thấy trong ảnh.
-4. Trả lời bằng tiếng Việt, thân thiện và chuyên nghiệp.
-
-QUY TẮC:
-- Không bịa tên sách. Chỉ gợi ý sách có trong Ngữ cảnh.
-- Nếu không thấy sách, hãy tư vấn dựa trên chủ đề của ảnh.
+2. Dựa trên dữ liệu Ngữ cảnh (RAG) bên dưới, hãy xác định xem có cuốn sách nào phù hợp không.
+3. QUY TẮC QUAN TRỌNG: Nếu không thấy sách phù hợp trực tiếp trong Ngữ cảnh, hãy SỬ DỤNG CÔNG CỤ \`search_books\` để tìm kiếm trong kho dữ liệu. Bạn PHẢI gọi hàm (function call), KHÔNG ĐƯỢC tự viết JSON ra tin nhắn.
+4. Trả lời bằng Tiếng Việt, thân thiện và chuyên nghiệp.
 
 --- THÔNG TIN NGƯỜI DÙNG ---
 ${user ? `Khách hàng: ${user.fullName || user.name || "Khách"} ${user.address ? `| Địa chỉ: ${user.address}` : ""}` : "(Khách chưa đăng nhập)"}
 
 --- DỮ LIỆU NGỮ CẢNH (RAG Context) ---
-${contextText || "(Không có dữ liệu ngữ cảnh trực tiếp)"}
+${contextText || "(Không có dữ liệu ngữ cảnh trực tiếp, hãy sử dụng công cụ tìm kiếm nếu cần)"}
 
 --- CÂU HỎI KÈM THEO CỦA KHÁCH ---
 ${message || "Khách không để lại lời nhắn kèm ảnh."}
@@ -263,16 +269,66 @@ Hãy phân tích ảnh và tư vấn khách hàng:`;
       {
         inlineData: {
           data: imageBuffer.toString("base64"),
-          mimeType: "image/jpeg", // Assuming JPEG, but could be dynamic
+          mimeType: "image/jpeg",
         },
       },
     ];
 
     const result = await model.generateContent([prompt, ...imageParts]);
     const response = await result.response;
-    return response.text();
+    
+    if (!response.candidates || response.candidates.length === 0) {
+      console.warn("[GeminiService] No candidates returned.");
+      return { type: "text", text: "Xin lỗi, mình không thể phân tích hình ảnh này vì lý do an toàn hoặc kỹ thuật." };
+    }
+
+    // 1. Primary: Official Function Call parts
+    const functionCalls = response.candidates[0].content?.parts?.filter(p => p.functionCall);
+    if (functionCalls && functionCalls.length > 0) {
+      console.log(`[GeminiService] Model requested ${functionCalls.length} tool calls via API.`);
+      return { type: "tool_call", calls: functionCalls.map(p => p.functionCall) };
+    }
+
+    // 2. Secondary/Fallback: Text-based JSON parsing
+    const text = response.text();
+    if (toolsAvailable && text.includes("search_books")) {
+      try {
+        const jsonMatch = text.match(/\{[\s\S]*search_books[\s\S]*\}/);
+        if (jsonMatch) {
+          const rawJson = jsonMatch[0];
+          const parsed = JSON.parse(rawJson);
+          console.log("[GeminiService] Found textual tool call fallback.");
+          
+          let query = "sach";
+          // Case 1: { "action": "search_books", "action_input": "..." }
+          if (parsed.action === "search_books") {
+            query = parsed.action_input || parsed.query || "sach";
+          } 
+          // Case 2: { "search_books": { "keyword": "..." } }
+          else if (parsed.search_books && typeof parsed.search_books === "object") {
+            query = parsed.search_books.keyword || parsed.search_books.query || parsed.search_books.topic || "sach";
+          }
+          // Case 3: { "search_books": "..." }
+          else if (parsed.search_books) {
+            query = parsed.search_books;
+          }
+
+          return { 
+            type: "tool_call", 
+            calls: [{ 
+              name: "search_books", 
+              args: { query: String(query) } 
+            }] 
+          };
+        }
+      } catch (e) {
+        console.warn("[GeminiService] Failed to parse textual tool call fallback:", e.message);
+      }
+    }
+
+    return { type: "text", text };
   } catch (error) {
-    console.error("[GeminiService] Image analysis error:", error.message);
+    console.error("[GeminiService] Image analysis error:", error);
     return null;
   }
 };

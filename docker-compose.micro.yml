@@ -203,7 +203,7 @@ services:
     container_name: book-assistant-service
     restart: unless-stopped
     env_file:
-      - ./services/assistant-service/.env.example
+      - ./services/assistant-service/.env
     environment:
       - MONGO_URI=mongodb://mongo:27017
       - ASSISTANT_DB_NAME=book_assistant
@@ -212,6 +212,7 @@ services:
       - CATALOG_SERVICE_URL=http://catalog-service:4002
       - CATALOG_INTERNAL_API_KEY=dev_catalog_internal_change_me
       - SUPPORT_SERVICE_URL=http://support-service:4007
+      # - IMAGE_SEARCH_SERVICE_URL=http://image-search-service:4010
       - ASSISTANT_REINDEX_API_KEY=dev_assistant_reindex_change_me
       - SUPPORT_INTERNAL_API_KEY=dev_support_internal_change_me
     ports:
@@ -228,6 +229,24 @@ services:
       retries: 8
     networks:
       - bookstore-micro-net
+
+  # image-search-service:
+  #   build:
+  #     context: ./services/image-search-service
+  #     dockerfile: Dockerfile
+  #   container_name: book-image-search-service
+  #   restart: unless-stopped
+  #   env_file:
+  #     - ./services/image-search-service/.env.example
+  #   environment:
+  #     - CATALOG_SERVICE_URL=http://catalog-service:4002
+  #   ports:
+  #     - "4010:4010"
+  #   depends_on:
+  #     catalog-service:
+  #       condition: service_healthy
+  #   networks:
+  #     - bookstore-micro-net
 
   api-gateway:
     build:

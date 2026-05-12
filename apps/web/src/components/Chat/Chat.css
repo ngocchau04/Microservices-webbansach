@@ -92,6 +92,30 @@
     line-height: 1.35;
   }
 
+  .chat-panel-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .chat-panel-action {
+    border: none;
+    background: transparent;
+    font-size: 1.15rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #555;
+    padding: 4px;
+    transition: color 0.2s, transform 0.2s;
+  }
+
+  .chat-panel-action:hover {
+    color: #c40000;
+    transform: scale(1.1);
+  }
+
   .chat-panel-close {
     border: none;
     background: transparent;
@@ -100,6 +124,24 @@
     cursor: pointer;
     color: #555;
     padding: 0 4px;
+    transition: color 0.2s, transform 0.2s;
+  }
+
+  .chat-panel-close:hover {
+    color: #c40000;
+    transform: scale(1.1);
+  }
+
+  .chat-panel.maximized {
+    bottom: 24px;
+    right: 24px;
+    width: min(900px, calc(100vw - 48px));
+    max-height: calc(100vh - 48px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .chat-panel.maximized .chat-panel-body {
+    font-size: 1rem;
   }
 
   .chat-panel-body {
