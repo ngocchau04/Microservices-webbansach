@@ -128,3 +128,67 @@ ProductSchema.index(
 `"none"` là giá trị đặc biệt MongoDB hỗ trợ để bỏ qua stemming/stop-words — hoạt động tốt cho tiếng Việt và các ngôn ngữ không có trong danh sách built-in. **KHÔNG thực hiện ở phase này — để phase fix code nguồn.**
 
 ---
+
+## BUG-04: idempotencyStore trong notification-service không có reset method cho test
+
+**Phát hiện tại:** `services/notification-service/test/notification.service.unit.test.js`, `services/notification-service/test/functional.notification.integration.test.js`  
+**Nguồn gốc:** P1-08 trong TEST_REVIEW.md  
+**Ngày phát hiện:** 2026-05-14
+
+### Triệu chứng
+
+Không có lỗi tức thì — tests hiện đang PASS. Vấn đề là rủi ro latent: `idempotencyStore` (Map in-memory) trong `notificationService.js` giữ state giữa các test trong cùng file, nhưng không có cách reset từ test.
+
+### Phân tích
+
+`notificationService.js` line 15:
+```js
+const idempotencyStore = new Map();
+```
+
+Module chỉ export 4 hàm gửi email — **không export reset method**:
+```js
+module.exports = {
+  sendVerificationEmail,
+  sendOrderEmail,
+  sendOrderStatusEmail,
+  sendSupportEmail,
+};
+```
+
+Các test hiện dùng các idempotency key khác nhau (`"verify-demo-1"`, `"verify-route-1"`) nên chưa conflict. Nhưng nếu thêm test mới trong cùng file mà vô tình dùng lại key cũ (hoặc nếu `beforeEach` không reset store), test sẽ nhận `deduplicated: true` sai.
+
+Pattern đúng (theo `adminCopilot.service.test.js`): expose `_resetIdempotencyStoreForTests()` và gọi trong `beforeEach` của test file.
+
+### Tác động
+
+- Rủi ro false positive trong tương lai khi thêm test case mới dùng cùng idempotency key
+- Tests hiện tại PASS nhưng không bảo đảm isolation đầy đủ
+
+### Fix đề xuất (tầng code nguồn)
+
+Thêm vào cuối `notificationService.js`:
+
+```js
+// Chỉ dùng trong môi trường test — không expose trong production build
+const _resetIdempotencyStoreForTests = () => idempotencyStore.clear();
+
+module.exports = {
+  sendVerificationEmail,
+  sendOrderEmail,
+  sendOrderStatusEmail,
+  sendSupportEmail,
+  _resetIdempotencyStoreForTests,
+};
+```
+
+Sau khi code nguồn thêm method này, test file gọi trong `beforeEach`:
+```js
+beforeEach(() => {
+  notificationService._resetIdempotencyStoreForTests();
+});
+```
+
+**KHÔNG thực hiện ở phase này — để phase fix code nguồn.**
+
+---

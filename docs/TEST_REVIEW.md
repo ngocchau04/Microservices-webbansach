@@ -954,7 +954,7 @@
 | P1-05 | `Backend/test/authorizationService.unit.test.js` line 172 | Mock leak risk | Chuyển `jwt.verify = jest.fn()` sang `jest.spyOn(jwt, "verify")` — **✅ ĐÃ SỬA 2026-05-14** |
 | P1-06 | `Backend/test/searchController.unit.test.js` lines 102, 374, 438 | Mock leak risk | Cùng fix pattern như P1-04 — **✅ ĐÃ SỬA 2026-05-14** |
 | P1-07 | `Backend/test/orderController.unit.test.js` line 280 | Mock restore không có try/finally | Chuyển sang `jest.spyOn` + `afterEach(restoreAllMocks)` — **✅ ĐÃ SỬA 2026-05-14** |
-| P1-08 | `services/notification-service/test/*.test.js` | Idempotency store không reset giữa các test | Expose reset method, gọi trong `beforeEach` |
+| P1-08 | `services/notification-service/test/*.test.js` | Idempotency store không reset giữa các test | Expose reset method, gọi trong `beforeEach` — **📝 GHI BUG-04 2026-05-14: src/ chưa export reset method, cần sửa code nguồn trước** |
 
 ### Ưu tiên 2 — Nên sửa (cải thiện chất lượng đáng kể)
 
