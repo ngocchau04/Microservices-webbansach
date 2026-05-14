@@ -42,5 +42,8 @@
     "compose:down": "docker compose -f docker-compose.micro.yml down --remove-orphans",
     "compose:logs": "docker compose -f docker-compose.micro.yml logs -f",
     "demo:stack-check": "node scripts/demo-stack-check.js"
+  },
+  "devDependencies": {
+    "supertest": "^7.2.2"
   }
 }

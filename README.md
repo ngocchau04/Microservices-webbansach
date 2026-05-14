@@ -178,13 +178,38 @@ Image search chatbot guide: `docs/image-search-chatbot.md`
 Demo script: `docs/chatbot-demo-script.md`
 
 ## Test Commands
+## Hướng dẫn chạy Test (Kiểm thử)
 
+Hệ thống hỗ trợ kiểm thử tự động bao gồm **Unit Test** (kiểm thử mức logic code) và **Integration Test** (kiểm thử tích hợp qua API Gateway, sử dụng Database thật, không dùng Mock).
+
+### 1. Chạy Unit Test (Kiểm thử độc lập)
+Chạy các bài test logic nội bộ của từng service (không cần bật hệ thống):
 ```bash
 npm run test:identity
 npm run test:catalog
 npm run test:checkout
-npm run test:smoke
 ```
+
+### 2. Chạy Integration Test (Kiểm thử tích hợp thực tế)
+**Yêu cầu bắt buộc:** Toàn bộ hệ thống phải đang chạy hoàn chỉnh qua Docker.
+```bash
+# 1. Bật hệ thống ở Terminal thứ nhất
+npm run compose:up
+```
+
+Mở **Terminal thứ hai** (tại thư mục gốc của dự án) và chạy các lệnh test tương ứng:
+
+**Kiểm thử luồng chức năng chung (Đăng nhập, Tìm sách, Giỏ hàng, Phân quyền):**
+```bash
+npx jest Backend/test/bookstore.integration.test.js
+```
+
+**Kiểm thử luồng Chatbot AI (Text Chat, GraphRAG, Image Search):**
+```bash
+npx jest services/assistant-service/test/assistant.real.test.js
+```
+
+*Lưu ý: Vì đây là Test thực tế, nếu Database của bạn rỗng hoặc Service có lỗi thật, Test sẽ tự động báo Fail đỏ để phản ánh đúng hiện trạng.*
 
 ## Seed Commands
 
