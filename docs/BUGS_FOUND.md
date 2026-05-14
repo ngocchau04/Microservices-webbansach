@@ -192,3 +192,82 @@ beforeEach(() => {
 **KHÔNG thực hiện ở phase này — để phase fix code nguồn.**
 
 ---
+
+## BUG-05: productController trả 500 cho mọi lỗi, không phân biệt lỗi client (ValidationError)
+
+**Phát hiện tại:** `Backend/test/productController.unit.test.js` TC-13, TC-14 (test.skip)  
+**Nguồn gốc:** Bước 4 — viết unit test mới cho productController  
+**Ngày phát hiện:** 2026-05-14
+
+### Triệu chứng
+
+**Issue A — catch trả 500 cho tất cả lỗi:**
+
+TC-13 (POST thiếu required field) và TC-14 (POST type ngoài enum) đều nhận 500 thay vì 400:
+
+```
+POST /product (body thiếu `title`)
+Expected: 400 { status: "error", code: "VALIDATION_ERROR" }
+Actual:   500 { status: "error", message: "Server error" }
+```
+
+Mongoose `ValidationError` là lỗi phía client (dữ liệu không hợp lệ) — phải trả 400, không phải 500.
+
+**Issue B — PUT không hỗ trợ partial update:**
+
+`productController.js` lines 94-119 xây `updatedData` bằng cách lấy từng field từ `req.body`:
+```js
+const updatedData = {
+  imgSrc: req.body.imgSrc,   // undefined nếu không có trong body
+  title: req.body.title,
+  // ...
+};
+product.set(updatedData);
+```
+
+Khi client gửi PUT với chỉ `{ title: "new" }`, các field còn lại trong `updatedData` là `undefined`. Mongoose `product.set({ imgSrc: undefined, author: undefined, ... })` sẽ **unset** các field đó, dẫn đến ValidationError khi `save()`. Vì Issue A, lỗi này bị nuốt thành 500.
+
+### Phân tích
+
+Tất cả route handler trong `productController.js` dùng cùng pattern catch chung:
+
+```js
+} catch (error) {
+  console.error("Error ...", error);
+  res.status(500).json({ status: "error", message: "Server error" });
+}
+```
+
+Không có xử lý `if (error.name === 'ValidationError')` để trả 400.
+
+### Tác động
+
+- `TC-13` và `TC-14` phải skip để tránh assert sai behavior → đánh mất test coverage cho validation path
+- Bất kỳ request POST/PUT nào với dữ liệu không hợp lệ đều nhận 500 — client không thể phân biệt "lỗi server thật" với "dữ liệu sai"
+- PUT partial update (chỉ gửi field cần thay đổi) không hoạt động; admin phải gửi full product data khi cập nhật
+
+### Fix đề xuất (tầng code nguồn)
+
+**Fix A — Phân biệt ValidationError trong catch:**
+```js
+} catch (error) {
+  if (error.name === 'ValidationError') {
+    return res.status(400).json({ status: "error", message: error.message });
+  }
+  console.error("Error ...", error);
+  res.status(500).json({ status: "error", message: "Server error" });
+}
+```
+
+**Fix B — Chỉ include fields có mặt trong req.body vào updatedData (hỗ trợ partial update):**
+```js
+const updatedData = {};
+const ALLOWED_FIELDS = ['imgSrc','title','author','translator','price','originalPrice',...,'type'];
+for (const field of ALLOWED_FIELDS) {
+  if (field in req.body) updatedData[field] = req.body[field];
+}
+product.set(updatedData);
+```
+
+**KHÔNG thực hiện ở phase này — để phase fix code nguồn.**
+
