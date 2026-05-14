@@ -974,9 +974,9 @@
 | # | File | Vấn đề | Hành động |
 |---|---|---|---|
 | P3-01 | `services/identity-service/test/authService.unit.test.js` | Tên "unit" nhưng dùng real DB | Đổi tên file; thêm test "login wrong password" — **✅ ĐÃ SỬA 2026-05-14 (đổi tên → authService.unit.real.test.js)** |
-| P3-02 | `services/catalog-service/test/catalog.smoke.test.js` | 270-dòng custom MongoDB mock | Xem xét thay bằng MongoMemoryServer |
+| P3-02 | `services/catalog-service/test/catalog.smoke.test.js` | 270-dòng custom MongoDB mock | Xem xét thay bằng MongoMemoryServer — **⏭️ SKIP: technical debt, effort quá lớn** |
 | P3-03 | `services/checkout-service/test/checkout.smoke.test.js` | Thiếu 401/403 tests | Thêm negative auth tests — **✅ ĐÃ SỬA 2026-05-14** |
-| P3-04 | `services/catalog-service/test/reviewService.eligibility.test.js` | Chỉ 2 test cases | Thêm duplicate review, deleteReview tests |
+| P3-04 | `services/catalog-service/test/reviewService.eligibility.test.js` | Chỉ 2 test cases | Thêm duplicate review, deleteReview tests — **✅ ĐÃ SỬA 2026-05-14** |
 | P3-05 | `services/assistant-service/test/chatbot.chat.integration.test.js` line 114 | Check literal "MongoDB" string | Assert trên error code hoặc response structure — **✅ ĐÃ SỬA 2026-05-14** |
 | P3-06 | `Backend/test/orderController.unit.test.js` line 248 | `_doc` internal property | Thay bằng `.toObject()` — **✅ ĐÃ SỬA 2026-05-14** |
 | P3-07 | `Backend/test/searchController.unit.test.js` lines 34-35 | `console.log` còn sót | Xóa debug logs — **✅ ĐÃ SỬA 2026-05-14** |

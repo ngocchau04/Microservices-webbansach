@@ -35,6 +35,10 @@ const mockReviewModel = {
     );
     return found ? attachReviewDoc(found) : null;
   }),
+  findById: jest.fn(async (id) => {
+    const found = reviews.find((r) => String(r._id) === String(id));
+    return found ? attachReviewDoc(found) : null;
+  }),
   create: jest.fn(async (payload = {}) => {
     const created = {
       _id: new mongoose.Types.ObjectId().toString(),
@@ -118,5 +122,61 @@ describe("reviewService purchase-gated review flow", () => {
     expect(listResult.ok).toBe(true);
     expect(listResult.data.items.length).toBe(1);
     expect(listResult.data.items[0].content).toBe("Sách rất hay");
+  });
+
+  test("duplicate review for the same order is rejected with 409", async () => {
+    mockCheckoutClient.checkReviewEligibility.mockResolvedValueOnce({
+      data: { eligible: true, orderId: "order_dup" },
+    });
+    mockCheckoutClient.completeOrderAfterReview.mockResolvedValueOnce({
+      data: { item: { _id: "order_dup", orderStatus: "completed" } },
+    });
+
+    const firstResult = await reviewService.createReview({
+      productId,
+      payload: { content: "Lần đầu", stars: 5, orderId: "order_dup" },
+      actor,
+      authHeader: "Bearer token",
+      config,
+    });
+    expect(firstResult.ok).toBe(true);
+
+    mockCheckoutClient.checkReviewEligibility.mockResolvedValueOnce({
+      data: { eligible: true, orderId: "order_dup" },
+    });
+
+    const secondResult = await reviewService.createReview({
+      productId,
+      payload: { content: "Lần hai", stars: 4, orderId: "order_dup" },
+      actor,
+      authHeader: "Bearer token",
+      config,
+    });
+
+    expect(secondResult.ok).toBe(false);
+    expect(secondResult.statusCode).toBe(409);
+    expect(secondResult.code).toBe("CATALOG_REVIEW_ALREADY_EXISTS");
+  });
+
+  test("owner can delete their own review", async () => {
+    const reviewId = new mongoose.Types.ObjectId().toString();
+    reviews.push({ _id: reviewId, productId, userId: actor.userId, content: "Hay", stars: 5 });
+
+    const result = await reviewService.deleteReview({ reviewId, actor });
+
+    expect(result.ok).toBe(true);
+    expect(result.statusCode).toBe(200);
+    expect(reviews.find((r) => String(r._id) === reviewId)).toBeUndefined();
+  });
+
+  test("non-owner user cannot delete another user's review", async () => {
+    const reviewId = new mongoose.Types.ObjectId().toString();
+    reviews.push({ _id: reviewId, productId, userId: "other_user", content: "Hay", stars: 5 });
+
+    const result = await reviewService.deleteReview({ reviewId, actor });
+
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(403);
+    expect(result.code).toBe("AUTH_FORBIDDEN");
   });
 });

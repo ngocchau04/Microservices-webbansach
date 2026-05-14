@@ -80,3 +80,51 @@ Luồng xử lý trong `chatInternal()` (`chatService.js`):
 **Option B (đúng hơn):** Trong các khối đó, gọi `CorpusDocument.findOne({ tenantId, sourceType: "faq", refId: "shipping" })` trước, chỉ dùng hardcoded `POLICY_SHIPPING` làm fallback khi corpus không có document. Cần truyền `tenantId` vào `liveCatalogFallbackService`.
 
 ---
+
+## BUG-03: MongoDB text index "language override unsupported" trong catalog-service
+
+**Phát hiện tại:** `services/catalog-service/test/productService.unit.test.js`, `services/catalog-service/test/functional.catalog.integration.test.js`  
+**Nguồn gốc:** Pre-existing, phát hiện khi chạy `npm test` trong catalog-service  
+**Ngày phát hiện:** 2026-05-14
+
+### Triệu chứng
+
+2 test suite không chạy được, toàn bộ test case trong mỗi suite fail với cùng lỗi:
+
+```
+MongoServerError: language override unsupported
+```
+
+Ảnh hưởng:
+- `productService.unit.test.js` — 8 test cases không chạy
+- `functional.catalog.integration.test.js` — 2 test cases không chạy
+
+### Phân tích
+
+MongoDB text index trong Product schema có `language` field (hoặc `default_language` / `language_override`) dùng giá trị không được MongoMemoryServer (hoặc phiên bản MongoDB test) hỗ trợ. Phổ biến nhất là dùng locale tiếng Việt (`"vietnamese"`) hoặc `language_override: "language"` trỏ vào field không tồn tại trong document.
+
+MongoDB chỉ hỗ trợ một tập ngôn ngữ nhất định trong text index; ngôn ngữ không nằm trong danh sách sẽ gây `language override unsupported` khi tạo collection/index.
+
+### Tác động
+
+- 2 test suite hoàn toàn không chạy được trong môi trường `npm test`
+- Không thể verify logic của `productService` (createProduct, listProducts, updateProduct, deleteProduct, ...) qua automated test
+
+### Fix đề xuất (tầng code nguồn)
+
+Trong Product schema (`catalog-service/src/models/Product.js`), tìm phần định nghĩa text index và thêm `default_language: "none"` để tắt ngôn ngữ:
+
+```js
+// Trước:
+ProductSchema.index({ title: "text", author: "text", description: "text" });
+
+// Sau:
+ProductSchema.index(
+  { title: "text", author: "text", description: "text" },
+  { default_language: "none" }
+);
+```
+
+`"none"` là giá trị đặc biệt MongoDB hỗ trợ để bỏ qua stemming/stop-words — hoạt động tốt cho tiếng Việt và các ngôn ngữ không có trong danh sách built-in. **KHÔNG thực hiện ở phase này — để phase fix code nguồn.**
+
+---
