@@ -113,6 +113,30 @@ describe("identity authService unit", () => {
     expect(decoded.tenantId).toBe("public");
   });
 
+  test("login returns AUTH_INVALID_CREDENTIALS when password is wrong", async () => {
+    await User.create({
+      tenantId: "public",
+      email: "wrongpw@example.com",
+      name: "Wrong PW User",
+      password: "correct_password",
+      sdt: "",
+      role: "user",
+      status: "active",
+      isActive: true,
+      authProvider: "local",
+    });
+
+    const result = await authService.login({
+      username: "wrongpw@example.com",
+      password: "wrong_password",
+      config,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(401);
+    expect(result.code).toBe("AUTH_INVALID_CREDENTIALS");
+  });
+
   test("refreshToken returns a new valid token for an existing real user", async () => {
     const user = await User.create({
       tenantId: "public",

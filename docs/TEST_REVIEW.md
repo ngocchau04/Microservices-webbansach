@@ -187,7 +187,7 @@
 
 ---
 
-### 10. `services/identity-service/test/authService.unit.test.js`
+### 10. `services/identity-service/test/authService.unit.real.test.js` *(đã đổi tên từ `authService.unit.test.js` — P3-01)*
 
 **Rating: ⚠️ CẦN CẢI THIỆN** | Loại: "Unit" (thực chất: Integration với real MongoDB) | Test cases: 6
 
@@ -961,7 +961,7 @@
 | # | File | Vấn đề | Hành động |
 |---|---|---|---|
 | P2-01 | `services/identity-service/test/*.test.js` (3 files) | `\|\|` pattern trong token assertion | Fix API response shape để nhất quán; xóa `\|\|` — **⏭️ SKIP: bug code nguồn, đã ghi vào docs/BUGS_FOUND.md** |
-| P2-02 | `services/identity-service/test/functional.identity.admin.integration.test.js` | 5 operations trong 1 test | Tách thành 3 test cases: list, update, delete |
+| P2-02 | `services/identity-service/test/functional.identity.admin.integration.test.js` | 5 operations trong 1 test | Tách thành 3 test cases: list, update, delete — **✅ ĐÃ SỬA 2026-05-14** |
 | P2-03 | `services/checkout-service/test/vnpayService.test.js` | Thiếu tampered-params security test | Thêm test verifyCallback với params bị tamper |
 | P2-04 | `services/reporting-service/test/dashboard.service.test.js` line 15 | `orderStatus: "Hoan tat"` sai enum | Đổi thành English enum value thực tế |
 | P2-05 | `services/assistant-service/test/chatbot.handoff.integration.test.js` line 94 | Cross-package `require` fragile path | Dùng `require("mongoose")` từ workspace root — **✅ ĐÃ SỬA 2026-05-14 (dùng createRequire từ node:module)** |
@@ -973,7 +973,7 @@
 
 | # | File | Vấn đề | Hành động |
 |---|---|---|---|
-| P3-01 | `services/identity-service/test/authService.unit.test.js` | Tên "unit" nhưng dùng real DB | Đổi tên file; thêm test "login wrong password" |
+| P3-01 | `services/identity-service/test/authService.unit.test.js` | Tên "unit" nhưng dùng real DB | Đổi tên file; thêm test "login wrong password" — **✅ ĐÃ SỬA 2026-05-14 (đổi tên → authService.unit.real.test.js)** |
 | P3-02 | `services/catalog-service/test/catalog.smoke.test.js` | 270-dòng custom MongoDB mock | Xem xét thay bằng MongoMemoryServer |
 | P3-03 | `services/checkout-service/test/checkout.smoke.test.js` | Thiếu 401/403 tests | Thêm negative auth tests |
 | P3-04 | `services/catalog-service/test/reviewService.eligibility.test.js` | Chỉ 2 test cases | Thêm duplicate review, deleteReview tests |

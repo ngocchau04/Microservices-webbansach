@@ -13,6 +13,8 @@ const User = require("../src/models/User");
 
 describe("functional identity admin integration", () => {
   const app = createApp();
+  let adminToken;
+  let user;
 
   beforeAll(async () => {
     if (mongoose.connection.readyState !== 1) {
@@ -25,13 +27,7 @@ describe("functional identity admin integration", () => {
 
   beforeEach(async () => {
     await User.deleteMany({});
-  });
 
-  afterAll(async () => {
-    await mongoose.disconnect();
-  });
-
-  test("admin can list customers, count customers, update status, update profile and delete user", async () => {
     await User.create({
       tenantId: "public",
       email: "admin@bookstore.local",
@@ -43,7 +39,8 @@ describe("functional identity admin integration", () => {
       isActive: true,
       authProvider: "local",
     });
-    const user = await User.create({
+
+    user = await User.create({
       tenantId: "public",
       email: "customer@example.com",
       name: "Customer User",
@@ -60,8 +57,14 @@ describe("functional identity admin integration", () => {
       .send({ username: "admin@bookstore.local", password: "Admin@123" })
       .expect(200);
 
-    const adminToken = adminLogin.body.token || adminLogin.body.data.token;
+    adminToken = adminLogin.body.token || adminLogin.body.data.token;
+  });
 
+  afterAll(async () => {
+    await mongoose.disconnect();
+  });
+
+  test("admin can list and count customers", async () => {
     const listRes = await request(app)
       .get("/users")
       .set("Authorization", `Bearer ${adminToken}`)
@@ -78,7 +81,9 @@ describe("functional identity admin integration", () => {
 
     expect(countRes.body.success).toBe(true);
     expect(countRes.body.data.total).toBe(1);
+  });
 
+  test("admin can update user status and profile", async () => {
     const statusRes = await request(app)
       .patch(`/users/${user._id}/status`)
       .set("Authorization", `Bearer ${adminToken}`)
@@ -96,7 +101,9 @@ describe("functional identity admin integration", () => {
 
     expect(profileRes.body.success).toBe(true);
     expect(profileRes.body.data.user.name).toBe("Updated Customer");
+  });
 
+  test("admin can delete a user and verify the record is removed", async () => {
     const deleteRes = await request(app)
       .delete(`/users/${user._id}`)
       .set("Authorization", `Bearer ${adminToken}`)
