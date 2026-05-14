@@ -91,7 +91,9 @@ describe("chatbot handoff integration", () => {
       await new Promise((resolve) => supportServer.close(resolve));
     }
     await mongoose.disconnect();
-    const supportMongoose = require("../../support-service/node_modules/mongoose");
+    const { createRequire } = require("node:module");
+    const supportRequire = createRequire(require.resolve("../../support-service/package.json"));
+    const supportMongoose = supportRequire("mongoose");
     await supportMongoose.disconnect();
   });
 

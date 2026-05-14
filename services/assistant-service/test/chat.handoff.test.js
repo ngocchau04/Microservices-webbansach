@@ -38,8 +38,11 @@ const chatService = require("../src/services/chatService");
 const { createOrOpenSupportHandoff } = require("../src/services/supportHandoffService");
 
 describe("chat handoff", () => {
-  test("returns handoff payload when explicit human support intent is detected", async () => {
+  beforeEach(() => {
     createOrOpenSupportHandoff.mockClear();
+  });
+
+  test("returns handoff payload when explicit human support intent is detected", async () => {
     const result = await chatService.chat({
       message: "toi can nhan vien ho tro",
       context: { userId: "u1", userEmail: "u1@example.com", sessionId: "sess1" },
