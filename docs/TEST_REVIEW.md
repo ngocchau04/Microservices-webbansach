@@ -963,7 +963,7 @@
 | P2-01 | `services/identity-service/test/*.test.js` (3 files) | `\|\|` pattern trong token assertion | Fix API response shape để nhất quán; xóa `\|\|` — **⏭️ SKIP: bug code nguồn, đã ghi vào docs/BUGS_FOUND.md** |
 | P2-02 | `services/identity-service/test/functional.identity.admin.integration.test.js` | 5 operations trong 1 test | Tách thành 3 test cases: list, update, delete — **✅ ĐÃ SỬA 2026-05-14** |
 | P2-03 | `services/checkout-service/test/vnpayService.test.js` | Thiếu tampered-params security test | Thêm test verifyCallback với params bị tamper — **✅ ĐÃ SỬA 2026-05-14** |
-| P2-04 | `services/reporting-service/test/dashboard.service.test.js` line 15 | `orderStatus: "Hoan tat"` sai enum | Đổi thành English enum value thực tế |
+| P2-04 | `services/reporting-service/test/dashboard.service.test.js` line 15 | `orderStatus: "Hoan tat"` sai enum | Đổi thành English enum value thực tế — **✅ ĐÃ SỬA 2026-05-14 (đổi → "completed")** |
 | P2-05 | `services/assistant-service/test/chatbot.handoff.integration.test.js` line 94 | Cross-package `require` fragile path | Dùng `require("mongoose")` từ workspace root — **✅ ĐÃ SỬA 2026-05-14 (dùng createRequire từ node:module)** |
 | P2-06 | `services/assistant-service/test/chat.handoff.test.js` line 42 | `mockClear` trong test body | Di chuyển ra `beforeEach` — **✅ ĐÃ SỬA 2026-05-14** |
 | P2-07 | `services/support-service/test/feedback.service.test.js` line 152 | Hardcoded `feedbackId: "fb_1"` | Lấy ID từ kết quả create thay vì hardcode — **✅ ĐÃ SỬA 2026-05-14** |

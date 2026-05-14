@@ -12,7 +12,7 @@ const sampleOrders = [
   {
     _id: "o2",
     createdAt: "2026-02-12T09:00:00.000Z",
-    orderStatus: "Hoan tat",
+    orderStatus: "completed",
     totals: { total: 200000 },
     items: [{ productId: "p1", title: "Book A", quantity: 4, price: 50000, image: "a.jpg" }],
   },
