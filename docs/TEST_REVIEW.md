@@ -966,7 +966,7 @@
 | P2-04 | `services/reporting-service/test/dashboard.service.test.js` line 15 | `orderStatus: "Hoan tat"` sai enum | Đổi thành English enum value thực tế |
 | P2-05 | `services/assistant-service/test/chatbot.handoff.integration.test.js` line 94 | Cross-package `require` fragile path | Dùng `require("mongoose")` từ workspace root — **✅ ĐÃ SỬA 2026-05-14 (dùng createRequire từ node:module)** |
 | P2-06 | `services/assistant-service/test/chat.handoff.test.js` line 42 | `mockClear` trong test body | Di chuyển ra `beforeEach` — **✅ ĐÃ SỬA 2026-05-14** |
-| P2-07 | `services/support-service/test/feedback.service.test.js` line 152 | Hardcoded `feedbackId: "fb_1"` | Lấy ID từ kết quả create thay vì hardcode |
+| P2-07 | `services/support-service/test/feedback.service.test.js` line 152 | Hardcoded `feedbackId: "fb_1"` | Lấy ID từ kết quả create thay vì hardcode — **✅ ĐÃ SỬA 2026-05-14** |
 | P2-08 | `services/media-service/test/media.service.unit.test.js` | Không test happy path upload | Thêm mock Cloudinary + test success path |
 
 ### Ưu tiên 3 — Cải thiện về sau (technical debt)

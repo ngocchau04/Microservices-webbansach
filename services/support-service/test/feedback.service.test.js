@@ -71,19 +71,20 @@ describe("feedbackService", () => {
   });
 
   test("list and update status work", async () => {
-    await feedbackService.createFeedback({
+    const createRes = await feedbackService.createFeedback({
       user: { userId: "u1", email: "user@example.com" },
       payload: { subject: "Need support", message: "Please help me with order", category: "order" },
       requestMeta: { userAgent: "jest", ipAddress: "127.0.0.1" },
       config,
     });
+    const feedbackId = String(createRes.data.feedback._id);
 
     const listResult = await feedbackService.listMyFeedback({ userId: "u1" });
     expect(listResult.ok).toBe(true);
     expect(listResult.data.items.length).toBe(1);
 
     const updateResult = await feedbackService.updateFeedbackStatus({
-      feedbackId: "fb_1",
+      feedbackId,
       status: "in_progress",
       adminMessage: "We are checking this issue",
     });
@@ -143,14 +144,15 @@ describe("feedbackService", () => {
   });
 
   test("addConversationMessage from admin flips state to human_active", async () => {
-    await feedbackService.createOrOpenAssistantHandoff({
+    const created = await feedbackService.createOrOpenAssistantHandoff({
       payload: {
         userId: "u3",
         latestUserMessage: "need human",
       },
     });
+    const feedbackId = String(created.data.conversation._id);
     const result = await feedbackService.addConversationMessage({
-      feedbackId: "fb_1",
+      feedbackId,
       sender: "admin",
       content: "Nhan vien dang ho tro ban",
       actorUserId: "admin_1",
