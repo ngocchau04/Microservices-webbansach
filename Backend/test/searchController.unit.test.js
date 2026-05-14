@@ -31,20 +31,21 @@ describe('SearchController Unit Tests', () => {
     }
     await mongoose.connect(mongoTestUri);
     
-    console.log('🧪 Test đang sử dụng MongoDB In-Memory:', mongoTestUri);
-    console.log('✅ Dữ liệu thực của bạn hoàn toàn an toàn!');
   });
 
   // Cleanup sau khi test xong
   afterAll(async () => {
     await mongoose.disconnect();
     await mongoServer.stop();
-    console.log('🧹 Đã dọn dẹp MongoDB test server');
   });
 
   // Xóa dữ liệu test trước mỗi test case (chỉ trong DB test in-memory)
   beforeEach(async () => {
     await Product.deleteMany({}); // Chỉ xóa dữ liệu test, không ảnh hưởng DB thực
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe('GET /', () => {
@@ -98,8 +99,7 @@ describe('SearchController Unit Tests', () => {
 
     it('should handle database error', async () => {
       // Mock lỗi database
-      const originalFind = Product.find;
-      Product.find = jest.fn().mockRejectedValue(new Error('Database error'));
+      jest.spyOn(Product, 'find').mockRejectedValue(new Error('Database error'));
 
       const response = await request(app)
         .get('/search/')
@@ -107,9 +107,6 @@ describe('SearchController Unit Tests', () => {
 
       expect(response.body).toHaveProperty('status', 'error');
       expect(response.body).toHaveProperty('message', 'Server error');
-
-      // Restore original method
-      Product.find = originalFind;
     });
   });
 
@@ -370,8 +367,7 @@ describe('SearchController Unit Tests', () => {
 
     it('should handle filter error', async () => {
       // Mock lỗi database
-      const originalFind = Product.find;
-      Product.find = jest.fn().mockReturnValue({
+      jest.spyOn(Product, 'find').mockReturnValue({
         sort: jest.fn().mockReturnValue({
           limit: jest.fn().mockReturnValue({
             skip: jest.fn().mockRejectedValue(new Error('Database error'))
@@ -386,9 +382,6 @@ describe('SearchController Unit Tests', () => {
 
       expect(response.body).toHaveProperty('status', 'error');
       expect(response.body).toHaveProperty('message', 'Server error');
-
-      // Restore
-      Product.find = originalFind;
     });
   });
 
@@ -435,8 +428,7 @@ describe('SearchController Unit Tests', () => {
 
     it('should handle database error in topAuthors', async () => {
       // Mock lỗi database
-      const originalAggregate = Product.aggregate;
-      Product.aggregate = jest.fn().mockRejectedValue(new Error('Aggregation error'));
+      jest.spyOn(Product, 'aggregate').mockRejectedValue(new Error('Aggregation error'));
 
       const response = await request(app)
         .get('/search/topAuthors')
@@ -444,9 +436,6 @@ describe('SearchController Unit Tests', () => {
 
       expect(response.body).toHaveProperty('status', 'error');
       expect(response.body).toHaveProperty('message', 'Server error');
-
-      // Restore
-      Product.aggregate = originalAggregate;
     });
   });
 });

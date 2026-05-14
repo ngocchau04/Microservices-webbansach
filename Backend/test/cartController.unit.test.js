@@ -44,6 +44,10 @@ describe('Cart Controller Unit Tests', () => {
     await mongoServer.stop();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   // Setup dữ liệu test cho mỗi test case
   beforeEach(async () => {
     // Xóa dữ liệu cũ
@@ -197,8 +201,7 @@ describe('Cart Controller Unit Tests', () => {
 
     it('should handle database errors gracefully', async () => {
       // Mock database error
-      const originalFindById = User.findById;
-      User.findById = jest.fn().mockRejectedValue(new Error('Database error'));
+      jest.spyOn(User, 'findById').mockRejectedValue(new Error('Database error'));
 
       const response = await request(app)
         .post('/user/cart')
@@ -210,9 +213,6 @@ describe('Cart Controller Unit Tests', () => {
         .expect(500);
 
       expect(response.body).toHaveProperty('message', 'Lỗi khi thêm sản phẩm vào giỏ hàng.');
-
-      // Restore original method
-      User.findById = originalFindById;
     });
   });
 
@@ -286,8 +286,7 @@ describe('Cart Controller Unit Tests', () => {
 
     it('should handle database errors gracefully', async () => {
       // Mock database error - cần mock cả populate method
-      const originalFindById = User.findById;
-      User.findById = jest.fn().mockReturnValue({
+      jest.spyOn(User, 'findById').mockReturnValue({
         populate: jest.fn().mockRejectedValue(new Error('Database error'))
       });
 
@@ -297,9 +296,6 @@ describe('Cart Controller Unit Tests', () => {
         .expect(500);
 
       expect(response.body).toHaveProperty('message', 'Lỗi khi lấy giỏ hàng.');
-
-      // Restore
-      User.findById = originalFindById;
     });
   });
 
@@ -397,8 +393,7 @@ describe('Cart Controller Unit Tests', () => {
 
     it('should handle database errors gracefully', async () => {
       // Mock database error
-      const originalFindById = User.findById;
-      User.findById = jest.fn().mockRejectedValue(new Error('Database error'));
+      jest.spyOn(User, 'findById').mockRejectedValue(new Error('Database error'));
 
       const response = await request(app)
         .delete('/user/cart')
@@ -409,9 +404,6 @@ describe('Cart Controller Unit Tests', () => {
         .expect(500);
 
       expect(response.body).toHaveProperty('message', 'Lỗi khi xóa sản phẩm khỏi giỏ hàng.');
-
-      // Restore
-      User.findById = originalFindById;
     });
   });
 
@@ -546,8 +538,7 @@ describe('Cart Controller Unit Tests', () => {
 
     it('should handle database errors gracefully', async () => {
       // Mock database error
-      const originalFindById = User.findById;
-      User.findById = jest.fn().mockRejectedValue(new Error('Database error'));
+      jest.spyOn(User, 'findById').mockRejectedValue(new Error('Database error'));
 
       const response = await request(app)
         .delete('/user/cart/list')
@@ -558,9 +549,6 @@ describe('Cart Controller Unit Tests', () => {
         .expect(500);
 
       expect(response.body).toHaveProperty('message', 'Lỗi khi xóa sản phẩm khỏi giỏ hàng.');
-
-      // Restore
-      User.findById = originalFindById;
     });
   });
 

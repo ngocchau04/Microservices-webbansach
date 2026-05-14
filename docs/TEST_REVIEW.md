@@ -950,17 +950,17 @@
 | P1-01 | `Backend/test/failureTests.unit.test.js` | File trống hoàn toàn | Viết test failure cases hoặc xóa file |
 | P1-02 | `Backend/test/userProfile.unit.test.js` | File trống hoàn toàn | Viết test hoặc xóa file |
 | P1-03 | `services/assistant-service/test/assistant.real.test.js` | E2E test trong Jest suite, assertion vô nghĩa | Di chuyển sang `e2e/` folder; sửa assertion `toBeDefined()` → `toBe(200)` |
-| P1-04 | `Backend/test/cartController.unit.test.js` lines 201, 290, 401, 550 | Mock leak risk | Chuyển sang `jest.spyOn` + `afterEach(() => jest.restoreAllMocks())` |
-| P1-05 | `Backend/test/authorizationService.unit.test.js` line 172 | Mock leak risk | Chuyển `jwt.verify = jest.fn()` sang `jest.spyOn(jwt, "verify")` |
-| P1-06 | `Backend/test/searchController.unit.test.js` lines 102, 374, 438 | Mock leak risk | Cùng fix pattern như P1-04 |
-| P1-07 | `Backend/test/orderController.unit.test.js` line 280 | Mock restore không có try/finally | Thêm try/finally |
+| P1-04 | `Backend/test/cartController.unit.test.js` lines 201, 290, 401, 550 | Mock leak risk | Chuyển sang `jest.spyOn` + `afterEach(() => jest.restoreAllMocks())` — **✅ ĐÃ SỬA 2026-05-14** |
+| P1-05 | `Backend/test/authorizationService.unit.test.js` line 172 | Mock leak risk | Chuyển `jwt.verify = jest.fn()` sang `jest.spyOn(jwt, "verify")` — **✅ ĐÃ SỬA 2026-05-14** |
+| P1-06 | `Backend/test/searchController.unit.test.js` lines 102, 374, 438 | Mock leak risk | Cùng fix pattern như P1-04 — **✅ ĐÃ SỬA 2026-05-14** |
+| P1-07 | `Backend/test/orderController.unit.test.js` line 280 | Mock restore không có try/finally | Chuyển sang `jest.spyOn` + `afterEach(restoreAllMocks)` — **✅ ĐÃ SỬA 2026-05-14** |
 | P1-08 | `services/notification-service/test/*.test.js` | Idempotency store không reset giữa các test | Expose reset method, gọi trong `beforeEach` |
 
 ### Ưu tiên 2 — Nên sửa (cải thiện chất lượng đáng kể)
 
 | # | File | Vấn đề | Hành động |
 |---|---|---|---|
-| P2-01 | `services/identity-service/test/*.test.js` (3 files) | `\|\|` pattern trong token assertion | Fix API response shape để nhất quán; xóa `\|\|` |
+| P2-01 | `services/identity-service/test/*.test.js` (3 files) | `\|\|` pattern trong token assertion | Fix API response shape để nhất quán; xóa `\|\|` — **⏭️ SKIP: bug code nguồn, đã ghi vào docs/BUGS_FOUND.md** |
 | P2-02 | `services/identity-service/test/functional.identity.admin.integration.test.js` | 5 operations trong 1 test | Tách thành 3 test cases: list, update, delete |
 | P2-03 | `services/checkout-service/test/vnpayService.test.js` | Thiếu tampered-params security test | Thêm test verifyCallback với params bị tamper |
 | P2-04 | `services/reporting-service/test/dashboard.service.test.js` line 15 | `orderStatus: "Hoan tat"` sai enum | Đổi thành English enum value thực tế |
@@ -978,8 +978,8 @@
 | P3-03 | `services/checkout-service/test/checkout.smoke.test.js` | Thiếu 401/403 tests | Thêm negative auth tests |
 | P3-04 | `services/catalog-service/test/reviewService.eligibility.test.js` | Chỉ 2 test cases | Thêm duplicate review, deleteReview tests |
 | P3-05 | `services/assistant-service/test/chatbot.chat.integration.test.js` line 114 | Check literal "MongoDB" string | Assert trên error code hoặc response structure |
-| P3-06 | `Backend/test/orderController.unit.test.js` line 248 | `_doc` internal property | Thay bằng `.toObject()` |
-| P3-07 | `Backend/test/searchController.unit.test.js` lines 34-35 | `console.log` còn sót | Xóa debug logs |
+| P3-06 | `Backend/test/orderController.unit.test.js` line 248 | `_doc` internal property | Thay bằng `.toObject()` — **✅ ĐÃ SỬA 2026-05-14** |
+| P3-07 | `Backend/test/searchController.unit.test.js` lines 34-35 | `console.log` còn sót | Xóa debug logs — **✅ ĐÃ SỬA 2026-05-14** |
 | P3-08 | `services/checkout-service/test/orderService.postDelivery.test.js` | Magic number `86400000` | Đặt constant `MS_PER_DAY = 86400000` |
 
 ---

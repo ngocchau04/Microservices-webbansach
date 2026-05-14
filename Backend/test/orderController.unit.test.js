@@ -44,6 +44,10 @@ describe('Order Controller Unit Tests - Fixed', () => {
     await mongoServer.stop();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   // Setup dữ liệu test cho mỗi test case
   beforeEach(async () => {
     // Xóa dữ liệu cũ
@@ -244,9 +248,8 @@ describe('Order Controller Unit Tests - Fixed', () => {
 
     it('should update order successfully when status is pending', async () => {
       // Mock Order.findById để trả về order với userId khớp với token
-      const originalFindById = Order.findById;
       const mockOrder = {
-        ...testOrder._doc,
+        ...testOrder.toObject(),
         userId: testUser._id.toString(),
         set: jest.fn(),
         save: jest.fn().mockImplementation(function() {
@@ -256,8 +259,8 @@ describe('Order Controller Unit Tests - Fixed', () => {
           return Promise.resolve(this);
         })
       };
-      
-      Order.findById = jest.fn().mockResolvedValue(mockOrder);
+
+      jest.spyOn(Order, 'findById').mockResolvedValue(mockOrder);
 
       const updateData = {
         name: 'Updated User',
@@ -275,16 +278,12 @@ describe('Order Controller Unit Tests - Fixed', () => {
       expect(response.body.data.name).toBe('Updated User');
       expect(response.body.data.phone).toBe('0987654321');
       expect(response.body.data.address).toBe('456 New Street');
-
-      // Restore
-      Order.findById = originalFindById;
     });
 
     it('should reject update when order status is not pending', async () => {
       // Mock Order.findById để trả về order với status completed
-      const originalFindById = Order.findById;
-      Order.findById = jest.fn().mockResolvedValue({
-        ...testOrder._doc,
+      jest.spyOn(Order, 'findById').mockResolvedValue({
+        ...testOrder.toObject(),
         userId: testUser._id.toString(), // Set userId khớp
         status: 'completed', // Set status completed
         set: jest.fn(),
@@ -303,9 +302,6 @@ describe('Order Controller Unit Tests - Fixed', () => {
 
       expect(response.body).toHaveProperty('status', 'error');
       expect(response.body).toHaveProperty('message', 'Order cannot be updated');
-
-      // Restore
-      Order.findById = originalFindById;
     });
   });
 

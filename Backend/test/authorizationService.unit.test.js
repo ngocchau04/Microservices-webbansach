@@ -21,6 +21,10 @@ describe('Authorization Service Unit Tests', () => {
     next = jest.fn();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   // Helper function để tạo JWT token
   const generateToken = (payload, options = {}) => {
     return jwt.sign(payload, SECRET_KEY, { expiresIn: '1h', ...options });
@@ -168,8 +172,7 @@ describe('Authorization Service Unit Tests', () => {
 
     it('should handle server errors gracefully', async () => {
       // Mock jwt.verify để throw unexpected error
-      const originalVerify = jwt.verify;
-      jwt.verify = jest.fn().mockImplementation(() => {
+      jest.spyOn(jwt, 'verify').mockImplementation(() => {
         throw new Error('Unexpected server error');
       });
 
@@ -184,9 +187,6 @@ describe('Authorization Service Unit Tests', () => {
         message: 'Server error'
       });
       expect(next).not.toHaveBeenCalled();
-
-      // Restore
-      jwt.verify = originalVerify;
     });
   });
 
