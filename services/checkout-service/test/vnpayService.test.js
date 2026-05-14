@@ -52,4 +52,18 @@ describe("vnpayService", () => {
       })
     ).toBe(false);
   });
+
+  test("verifyCallback returns false when a param is tampered after signing", () => {
+    const url = createPaymentUrl({ transaction, order, config, ipAddress: "127.0.0.1" });
+    const params = Object.fromEntries(new URL(url).searchParams.entries());
+    params.vnp_Amount = "999999999";
+    expect(verifyCallback({ params, config })).toBe(false);
+  });
+
+  test("verifyCallback returns false when secure hash is replaced with garbage", () => {
+    const url = createPaymentUrl({ transaction, order, config, ipAddress: "127.0.0.1" });
+    const params = Object.fromEntries(new URL(url).searchParams.entries());
+    params.vnp_SecureHash = "a".repeat(128);
+    expect(verifyCallback({ params, config })).toBe(false);
+  });
 });

@@ -962,7 +962,7 @@
 |---|---|---|---|
 | P2-01 | `services/identity-service/test/*.test.js` (3 files) | `\|\|` pattern trong token assertion | Fix API response shape để nhất quán; xóa `\|\|` — **⏭️ SKIP: bug code nguồn, đã ghi vào docs/BUGS_FOUND.md** |
 | P2-02 | `services/identity-service/test/functional.identity.admin.integration.test.js` | 5 operations trong 1 test | Tách thành 3 test cases: list, update, delete — **✅ ĐÃ SỬA 2026-05-14** |
-| P2-03 | `services/checkout-service/test/vnpayService.test.js` | Thiếu tampered-params security test | Thêm test verifyCallback với params bị tamper |
+| P2-03 | `services/checkout-service/test/vnpayService.test.js` | Thiếu tampered-params security test | Thêm test verifyCallback với params bị tamper — **✅ ĐÃ SỬA 2026-05-14** |
 | P2-04 | `services/reporting-service/test/dashboard.service.test.js` line 15 | `orderStatus: "Hoan tat"` sai enum | Đổi thành English enum value thực tế |
 | P2-05 | `services/assistant-service/test/chatbot.handoff.integration.test.js` line 94 | Cross-package `require` fragile path | Dùng `require("mongoose")` từ workspace root — **✅ ĐÃ SỬA 2026-05-14 (dùng createRequire từ node:module)** |
 | P2-06 | `services/assistant-service/test/chat.handoff.test.js` line 42 | `mockClear` trong test body | Di chuyển ra `beforeEach` — **✅ ĐÃ SỬA 2026-05-14** |
@@ -975,12 +975,12 @@
 |---|---|---|---|
 | P3-01 | `services/identity-service/test/authService.unit.test.js` | Tên "unit" nhưng dùng real DB | Đổi tên file; thêm test "login wrong password" — **✅ ĐÃ SỬA 2026-05-14 (đổi tên → authService.unit.real.test.js)** |
 | P3-02 | `services/catalog-service/test/catalog.smoke.test.js` | 270-dòng custom MongoDB mock | Xem xét thay bằng MongoMemoryServer |
-| P3-03 | `services/checkout-service/test/checkout.smoke.test.js` | Thiếu 401/403 tests | Thêm negative auth tests |
+| P3-03 | `services/checkout-service/test/checkout.smoke.test.js` | Thiếu 401/403 tests | Thêm negative auth tests — **✅ ĐÃ SỬA 2026-05-14** |
 | P3-04 | `services/catalog-service/test/reviewService.eligibility.test.js` | Chỉ 2 test cases | Thêm duplicate review, deleteReview tests |
 | P3-05 | `services/assistant-service/test/chatbot.chat.integration.test.js` line 114 | Check literal "MongoDB" string | Assert trên error code hoặc response structure — **✅ ĐÃ SỬA 2026-05-14** |
 | P3-06 | `Backend/test/orderController.unit.test.js` line 248 | `_doc` internal property | Thay bằng `.toObject()` — **✅ ĐÃ SỬA 2026-05-14** |
 | P3-07 | `Backend/test/searchController.unit.test.js` lines 34-35 | `console.log` còn sót | Xóa debug logs — **✅ ĐÃ SỬA 2026-05-14** |
-| P3-08 | `services/checkout-service/test/orderService.postDelivery.test.js` | Magic number `86400000` | Đặt constant `MS_PER_DAY = 86400000` |
+| P3-08 | `services/checkout-service/test/orderService.postDelivery.test.js` | Magic number `86400000` | Đặt constant `MS_PER_DAY = 86400000` — **✅ ĐÃ SỬA 2026-05-14** |
 
 ---
 

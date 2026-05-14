@@ -287,4 +287,29 @@ describe("checkout-service smoke flow", () => {
       expect.objectContaining({ orderId: "order_1", nextStatus: "processing" })
     );
   });
+
+  test("GET /cart without Authorization header returns 401", async () => {
+    const response = await request(app).get("/cart").expect(401);
+    expect(response.body.success).toBe(false);
+    expect(response.body.code).toBe("AUTH_UNAUTHORIZED");
+  });
+
+  test("GET /admin/orders with user token returns 403", async () => {
+    const response = await request(app)
+      .get("/admin/orders")
+      .set("Authorization", `Bearer ${userToken}`)
+      .expect(403);
+    expect(response.body.success).toBe(false);
+    expect(response.body.code).toBe("AUTH_FORBIDDEN");
+  });
+
+  test("POST /cart/items with invalid token returns 401", async () => {
+    const response = await request(app)
+      .post("/cart/items")
+      .set("Authorization", "Bearer invalid_token_xyz")
+      .send({ productId: "product_1", quantity: 1 })
+      .expect(401);
+    expect(response.body.success).toBe(false);
+    expect(response.body.code).toBe("AUTH_INVALID_TOKEN");
+  });
 });

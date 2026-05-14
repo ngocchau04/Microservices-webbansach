@@ -1,3 +1,7 @@
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const REVIEW_WINDOW_DAYS = 14;
+const RETURN_WINDOW_DAYS = 7;
+
 const orderStore = new Map();
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -87,7 +91,7 @@ describe("checkout post-delivery eligibility rules", () => {
   });
 
   test("buyers can review after receipt confirmation within 14 days", async () => {
-    const receivedAt = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    const receivedAt = new Date(Date.now() - 2 * MS_PER_DAY);
     orderStore.set(
       "o2",
       attachOrderDoc({
@@ -111,7 +115,7 @@ describe("checkout post-delivery eligibility rules", () => {
   });
 
   test("review window expires after 14 days", async () => {
-    const receivedAt = new Date(Date.now() - 16 * 24 * 60 * 60 * 1000);
+    const receivedAt = new Date(Date.now() - 16 * MS_PER_DAY);
     orderStore.set(
       "o3",
       attachOrderDoc({
@@ -135,7 +139,7 @@ describe("checkout post-delivery eligibility rules", () => {
   });
 
   test("return request expires after 7 days from receipt", async () => {
-    const receivedAt = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+    const receivedAt = new Date(Date.now() - 8 * MS_PER_DAY);
     orderStore.set(
       "o4",
       attachOrderDoc({
