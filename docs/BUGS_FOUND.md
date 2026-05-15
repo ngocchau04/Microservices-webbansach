@@ -397,3 +397,301 @@ if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
 
 **KHÔNG thực hiện ở phase này — để phase fix code nguồn.**
 
+---
+
+## BUG-08: userController — Ba endpoint update thiếu authentication và trả HTTP status code sai cho lỗi
+
+**Phát hiện tại:** `Backend/test/failureTests.unit.test.js` FT-09, FT-10 (test.skip); `Backend/test/userProfile.unit.test.js` UP-02, UP-04, UP-06  
+**Nguồn gốc:** Bước 4 — viết unit test mới cho userProfile và failureTests  
+**Ngày phát hiện:** 2026-05-15
+
+### Triệu chứng
+
+**Issue A — Ba endpoint không có authentication (security gap):**
+
+```
+POST /update-name   → không cần token → cập nhật được tên bất kỳ user nào nếu biết email
+POST /update-phone  → không cần token → tương tự
+POST /update-password → không cần token → bất kỳ ai cũng đổi được password của người khác
+```
+
+Bất kỳ client nào cũng có thể gọi trực tiếp mà không cần JWT.
+
+**Issue B — Lỗi trả về HTTP 200 thay vì HTTP 4xx/5xx:**
+
+```
+POST /update-name (email không tồn tại)
+Actual:   HTTP 200 { status: "fail", message: "User not found" }
+Expected: HTTP 404 { status: "fail", message: "User not found" }
+
+POST /update-name (DB lỗi)
+Actual:   HTTP 200 { status: "fail", message: "<error message>" }
+Expected: HTTP 500 { status: "error", message: "Server error" }
+```
+
+Cả ba endpoint dùng `.then().catch()` với `res.send()` — không set HTTP status code. `res.send(body)` mặc định là 200 cho mọi trường hợp kể cả lỗi.
+
+### Phân tích
+
+```js
+router.post("/update-name", (req, res) => {
+  const { email, name } = req.body;
+  User.findOneAndUpdate({ email }, { name }, { new: true })
+    .then((user) => {
+      if (user) {
+        res.send({ status: "success", user });       // HTTP 200 ✓
+      } else {
+        res.send({ status: "fail", message: "User not found" });  // HTTP 200 ✗ (nên 404)
+      }
+    })
+    .catch((error) => res.send({ status: "fail", message: error.message })); // HTTP 200 ✗ (nên 500)
+});
+```
+
+Không có `checkLogin` middleware được gọi trước bất kỳ endpoint nào trong ba route này.
+
+### Tác động
+
+- **Security**: Bất kỳ attacker nào biết email của user đều có thể thay đổi name, phone, hoặc password mà không cần xác thực
+- **API contract**: Client không thể phân biệt success (200) với "user not found" (cũng 200) qua HTTP status — phải parse body
+- Không nhất quán với các endpoint khác trong project (đều dùng `res.status(404).json(...)`)
+
+### Fix đề xuất (tầng code nguồn)
+
+**Fix A — Thêm `checkLogin` middleware:**
+```js
+router.post("/update-name", checkLogin, (req, res) => { ... });
+router.post("/update-phone", checkLogin, (req, res) => { ... });
+router.post("/update-password", checkLogin, (req, res) => { ... });
+```
+Và đổi lookup từ email sang `req.user.userId` (sau khi thêm auth, dùng userId từ token thay vì email từ body).
+
+**Fix B — Sửa HTTP status code:**
+```js
+.then((user) => {
+  if (user) {
+    res.status(200).json({ status: "success", user });
+  } else {
+    res.status(404).json({ status: "fail", message: "User not found" });
+  }
+})
+.catch((error) => {
+  console.error(error);
+  res.status(500).json({ status: "error", message: "Server error" });
+});
+```
+
+**KHÔNG thực hiện ở phase này — để phase fix code nguồn.**
+
+---
+
+## BUG-09: reviewController — schema field mismatch và ownership check hỏng hoàn toàn
+
+**Phát hiện tại:** `Backend/test/reviewController.unit.test.js` RV-11, RV-13 (test.skip)  
+**Nguồn gốc:** Bước 4 — viết unit test mới cho reviewController  
+**Ngày phát hiện:** 2026-05-15
+
+### Triệu chứng
+
+**Issue A — GET query sai field → luôn trả về array rỗng:**
+
+```
+GET /review/:productId (DB có 1 review cho productId này)
+Actual:   200 { status: "success", data: [] }
+Expected: 200 { status: "success", data: [{ rating: 5, review: "..." }] }
+```
+
+`reviewController.js` line 9:
+```js
+const reviews = await Review.find({ productId: req.params.productId });
+```
+
+Nhưng `Review.js` schema định nghĩa field là `product` (không phải `productId`):
+```js
+product: { type: mongoose.Schema.Types.ObjectId, ref: "products" }
+```
+
+MongoDB query `{ productId: ... }` không match field nào → luôn trả `[]`.
+
+**Issue B — Ownership check bị hỏng hoàn toàn:**
+
+`reviewController.js` line 39:
+```js
+if (req.user.id !== review.userId) { return res.status(403)... }
+```
+
+- `req.user.id`: JWT payload là `{ userId, role }` (xem `verityService.js`) → `req.user.id` = `undefined`
+- `review.userId`: Schema có `user` (ObjectId), không có `userId` → `review.userId` = `undefined`
+- `undefined !== undefined` = `false` → if block không bao giờ chạy → check không bao giờ trả 403
+
+Kết quả: **bất kỳ user đăng nhập nào đều có thể sửa review của người khác**.
+
+**Issue C — POST không gán userId đúng:**
+
+`reviewController.js` line 20:
+```js
+req.body.userId = req.user.id;  // req.user.id = undefined
+const review = new Review(req.body);
+```
+
+`req.user.id` là `undefined`. Schema có field `user` (không phải `userId`) → `userId` bị ignore bởi Mongoose strict mode → review được lưu nhưng **không có thông tin user gì cả**.
+
+### Tác động
+
+- GET reviews theo product luôn trả về `[]` → frontend không hiển thị được review nào
+- Bất kỳ user đã đăng nhập nào cũng có thể sửa/xóa review của người khác
+- Review sau khi tạo không liên kết với user → không thể biết ai viết review
+
+### Fix đề xuất (tầng code nguồn)
+
+**Fix A — GET query:**
+```js
+const reviews = await Review.find({ product: req.params.productId });
+```
+
+**Fix B — POST gán đúng field:**
+```js
+req.body.user = req.user.userId;  // dùng `user` field và `userId` từ JWT
+```
+
+**Fix C — PUT ownership check:**
+```js
+if (req.user.userId !== review.user?.toString()) {
+  return res.status(403).json({ status: "fail", message: "Permission denied" });
+}
+```
+
+**KHÔNG thực hiện ở phase này — để phase fix code nguồn.**
+
+---
+
+## BUG-10: reviewController thiếu purchase-gate — mọi user đăng nhập đều review được
+
+**Phát hiện tại:** `Backend/test/reviewController.unit.test.js` RV-12 (test.skip)  
+**Nguồn gốc:** Bước 4 — viết unit test mới cho reviewController  
+**Ngày phát hiện:** 2026-05-15
+
+### Triệu chứng
+
+```
+POST /review { rating: 5, review: "Sách hay" } (user chưa mua sách)
+Actual:   201 { status: "success", data: { _id: "...", rating: 5 } }
+Expected: 403 { status: "fail", message: "Bạn chưa mua sản phẩm này" }
+```
+
+### Phân tích
+
+`reviewController.js` chỉ kiểm tra `checkLogin` (đã đăng nhập), không kiểm tra xem user đã mua sản phẩm chưa trước khi cho phép tạo review. Không có:
+- Kiểm tra Order history để xác nhận user đã purchase
+- Kiểm tra duplicate review (user không nên review cùng sản phẩm nhiều lần)
+
+### Tác động
+
+- Bất kỳ user đã đăng nhập đều có thể review bất kỳ sản phẩm nào, kể cả sản phẩm chưa mua
+- Có thể bị lạm dụng để spam review fake
+- Không có cơ chế chặn 1 user review cùng 1 sản phẩm nhiều lần
+
+### Fix đề xuất (tầng code nguồn)
+
+Thêm vào `POST /` handler:
+1. Kiểm tra trong Order collection xem `userId` có order với trạng thái `completed` chứa `productId` không
+2. Kiểm tra trong Review collection xem `userId` đã review `productId` này chưa
+3. Trả 403 nếu chưa mua, 409 nếu đã review rồi
+
+**KHÔNG thực hiện ở phase này — để phase fix code nguồn.**
+
+---
+
+## BUG-11: revenueController GET không có .catch() → unhandled rejection khi DB lỗi
+
+**Phát hiện tại:** `Backend/test/revenueController.unit.test.js` RE-03 (test.skip)  
+**Nguồn gốc:** Bước 4 — viết unit test mới cho revenueController  
+**Ngày phát hiện:** 2026-05-15
+
+### Triệu chứng
+
+```
+GET /revenue (DB lỗi)
+Actual:   Request treo mãi, không có response (timeout)
+Expected: 500 { status: "error", message: "Server error" }
+```
+
+### Phân tích
+
+`revenueController.js`:
+```js
+router.get('/', (req, res) => {
+    Revenue.find({},{_id: 0}).then((data) => {
+        res.status(200).send(data);
+    });
+    // Không có .catch() !
+});
+```
+
+Khi `Revenue.find()` reject (DB lỗi), Promise bị rejected nhưng không có handler → Node.js `UnhandledPromiseRejectionWarning` → request không nhận được response → client timeout.
+
+Đây là anti-pattern phổ biến khi dùng `.then()` mà quên `.catch()`. So sánh với tất cả controller khác trong project đều dùng `async/await + try/catch`.
+
+### Tác động
+
+- DB lỗi → tất cả request đến `GET /revenue` treo mãi
+- Server không crash nhưng connection pool bị chiếm bởi request treo
+- Không thể viết test cho path này (sẽ timeout Jest)
+- Node.js sẽ emit `UnhandledPromiseRejectionWarning` → future Node versions có thể crash process
+
+### Fix đề xuất (tầng code nguồn)
+
+Chuyển sang `async/await` và thêm try/catch:
+
+```js
+router.get('/', async (req, res) => {
+  try {
+    const data = await Revenue.find({}, { _id: 0 });
+    res.status(200).json(data);
+  } catch (error) {
+    console.error("Error fetching revenue:", error);
+    res.status(500).json({ status: "error", message: "Server error" });
+  }
+});
+```
+
+**KHÔNG thực hiện ở phase này — để phase fix code nguồn.**
+
+---
+
+## BUG-12: revenueController GET không có authentication — bất kỳ ai cũng xem được doanh thu
+
+**Phát hiện tại:** `Backend/test/revenueController.unit.test.js` RE-04 (test.skip)  
+**Nguồn gốc:** Bước 4 — viết unit test mới cho revenueController  
+**Ngày phát hiện:** 2026-05-15
+
+### Triệu chứng
+
+```
+GET /revenue (không có Authorization header)
+Actual:   200 [ { year: 2024, revenue: [...] } ]
+Expected: 401 { status: "error", message: "Unauthorized" }
+```
+
+### Phân tích
+
+`revenueController.js` không có bất kỳ middleware authentication/authorization nào. Endpoint này lộ dữ liệu doanh thu kinh doanh nhạy cảm (revenue by year) cho bất kỳ ai biết URL.
+
+So sánh: `voucherController.js` và `productController.js` đều dùng `checkAdmin` cho các endpoint admin-sensitive.
+
+### Tác động
+
+- Dữ liệu doanh thu (thông tin kinh doanh nhạy cảm) có thể bị truy cập bởi bất kỳ user nào, kể cả chưa đăng nhập
+- Vi phạm nguyên tắc least privilege
+
+### Fix đề xuất (tầng code nguồn)
+
+Thêm `checkAdmin` middleware:
+```js
+const { checkAdmin } = require('../services/verityService');
+
+router.get('/', checkAdmin, async (req, res) => { ... });
+```
+
+**KHÔNG thực hiện ở phase này — để phase fix code nguồn.**
+
