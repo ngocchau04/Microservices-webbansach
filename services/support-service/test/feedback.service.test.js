@@ -1,60 +1,38 @@
-const savedItems = [];
-
-const clone = (value) => JSON.parse(JSON.stringify(value));
-
-const attachDocMethods = (doc) => {
-  doc.save = async () => doc;
-  return doc;
-};
-
-jest.mock("../src/models/Feedback", () => ({
-  create: jest.fn(async (payload) => {
-    const item = attachDocMethods({
-      _id: `fb_${savedItems.length + 1}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      ...clone(payload),
-    });
-    savedItems.push(item);
-    return item;
-  }),
-  find: jest.fn((query = {}) => ({
-    sort: jest.fn(async () =>
-      savedItems.filter((item) =>
-        Object.entries(query).every(([key, value]) => String(item[key]) === String(value))
-      )
-    ),
-  })),
-  findById: jest.fn(async (id) => savedItems.find((item) => String(item._id) === String(id)) || null),
-  findOne: jest.fn((query = {}) => ({
-    sort: jest.fn(async () =>
-      savedItems.find((item) =>
-        Object.entries(query).every(([key, value]) => {
-          if (value && typeof value === "object" && Array.isArray(value.$in)) {
-            return value.$in.map(String).includes(String(item[key]));
-          }
-          return String(item[key]) === String(value);
-        })
-      ) || null
-    ),
-  })),
-}));
+const mongoose = require("mongoose");
+const { MongoMemoryServer } = require("mongodb-memory-server");
 
 jest.mock("../src/services/notificationClient", () => ({
   sendSupportAckEmail: jest.fn(async () => ({ success: true })),
 }));
 
+const Feedback = require("../src/models/Feedback");
 const feedbackService = require("../src/services/feedbackService");
 
 describe("feedbackService", () => {
+  let mongoServer;
+
   const config = {
     notificationServiceUrl: "http://localhost:4005",
     notificationRequestTimeoutMs: 1000,
     notificationRequired: false,
   };
 
-  beforeEach(() => {
-    savedItems.length = 0;
+  beforeAll(async () => {
+    mongoServer = await MongoMemoryServer.create();
+    await mongoose.connect(mongoServer.getUri());
+  });
+
+  afterAll(async () => {
+    await mongoose.disconnect();
+    await mongoServer.stop();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  beforeEach(async () => {
+    await Feedback.deleteMany({});
   });
 
   test("createFeedback creates feedback item", async () => {

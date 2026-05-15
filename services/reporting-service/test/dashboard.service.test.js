@@ -1,3 +1,6 @@
+const mongoose = require("mongoose");
+const { MongoMemoryServer } = require("mongodb-memory-server");
+
 const sampleOrders = [
   {
     _id: "o1",
@@ -18,23 +21,38 @@ const sampleOrders = [
   },
 ];
 
-jest.mock("../src/models/ReportCache", () => ({
-  findOne: jest.fn(async () => null),
-  deleteOne: jest.fn(async () => null),
-  findOneAndUpdate: jest.fn(async () => null),
-}));
-
 jest.mock("../src/services/internalServiceClient", () => ({
   fetchAllOrders: jest.fn(async () => sampleOrders),
   fetchUsersCount: jest.fn(async () => 12),
 }));
 
+const ReportCache = require("../src/models/ReportCache");
 const reportingService = require("../src/services/reportingService");
 
 describe("reportingService aggregations", () => {
+  let mongoServer;
+
   const config = {
     dashboardCacheTtlSeconds: 60,
   };
+
+  beforeAll(async () => {
+    mongoServer = await MongoMemoryServer.create();
+    await mongoose.connect(mongoServer.getUri());
+  });
+
+  afterAll(async () => {
+    await mongoose.disconnect();
+    await mongoServer.stop();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  beforeEach(async () => {
+    await ReportCache.deleteMany({});
+  });
 
   test("getDashboardSummary returns summary metrics", async () => {
     const result = await reportingService.getDashboardSummary({ config });
@@ -72,5 +90,17 @@ describe("reportingService aggregations", () => {
     expect(topProducts.data.items[0].soldQuantity).toBeGreaterThan(0);
     expect(orderStatus.ok).toBe(true);
     expect(orderStatus.data.totalOrders).toBe(2);
+  });
+
+  test("getDashboardSummary returns cached result on second call", async () => {
+    // Lần 1: cache miss → ghi vào DB
+    await reportingService.getDashboardSummary({ config });
+
+    // Lần 2: cache hit → trả data từ ReportCache (real DB)
+    const result = await reportingService.getDashboardSummary({ config });
+
+    expect(result.ok).toBe(true);
+    expect(result.data.cached).toBe(true);
+    expect(result.data.totalOrders).toBe(2);
   });
 });

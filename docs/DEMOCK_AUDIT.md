@@ -1,7 +1,8 @@
 # DE-MOCK AUDIT — Phân tích mock trong test suite
 
 **Ngày thực hiện:** 2026-05-15  
-**Phạm vi:** Read-only — không sửa bất kỳ file nào  
+**De-mock phase hoàn thành:** 2026-05-15  
+**Phạm vi:** Audit (read-only) + De-mock phase (B-03, B-04, B-05, B-06, C-01 — 4 files)  
 **Mục tiêu:** Xác định mock nào che giấu bug thực tế, mock nào hợp lệ về kỹ thuật
 
 ---
@@ -129,10 +130,11 @@ jest.mock("../src/models/Review", () => mockReviewModel);
 
 ---
 
-### B-03: orderService.postDelivery.test.js — mockOrderModel + Cart mock
+### B-03: orderService.postDelivery.test.js — mockOrderModel + Cart mock ✅ DONE
 
 **File:** `services/checkout-service/test/orderService.postDelivery.test.js`  
-**Lines:** 1–48
+**Lines:** 1–48  
+**Kết quả:** 6/6 PASS — không lộ bug mới
 
 **Mock hiện tại làm gì:**
 
@@ -164,10 +166,11 @@ jest.mock("../src/services/notificationClient", () => ({
 
 ---
 
-### B-04: functional.payment.unit.test.js — PaymentTransaction + Order model mocks
+### B-04: functional.payment.unit.test.js — PaymentTransaction + Order model mocks ✅ DONE
 
 **File:** `services/checkout-service/test/functional.payment.unit.test.js`  
-**Lines:** 1–10
+**Lines:** 1–10  
+**Kết quả:** 2/2 PASS — không lộ bug mới
 
 **Mock hiện tại làm gì:**
 
@@ -197,10 +200,11 @@ PaymentTransaction.create.mockResolvedValue(transaction);
 
 ---
 
-### B-05: dashboard.service.test.js — ReportCache mock
+### B-05: dashboard.service.test.js — ReportCache mock ✅ DONE
 
 **File:** `services/reporting-service/test/dashboard.service.test.js`  
-**Lines:** 21–25
+**Lines:** 21–25  
+**Kết quả:** 4/4 PASS (3 gốc + 1 test cache-hit mới) — lộ rằng cache-hit path chưa có test trước đó
 
 **Mock hiện tại làm gì:**
 
@@ -222,10 +226,11 @@ Mock này buộc cache luôn miss — test chỉ test "fresh computation" path, 
 
 ---
 
-### B-06: feedback.service.test.js — Feedback model mock
+### B-06: feedback.service.test.js — Feedback model mock ✅ DONE
 
 **File:** `services/support-service/test/feedback.service.test.js`  
-**Lines:** 10–41
+**Lines:** 10–41  
+**Kết quả:** 5/5 PASS — không lộ bug mới
 
 **Mock hiện tại làm gì:**
 
@@ -256,10 +261,11 @@ jest.mock("../src/models/Feedback", () => ({
 
 ---
 
-### C-01: functional.payment.unit.test.js — vnpayService + momoService mocks (HMAC verification)
+### C-01: functional.payment.unit.test.js — vnpayService + momoService mocks (HMAC verification) ✅ DONE (partial)
 
 **File:** `services/checkout-service/test/functional.payment.unit.test.js`  
-**Lines:** 11–22
+**Lines:** 11–22  
+**Kết quả:** 2/2 PASS. `vnpayService` mock xóa hoàn toàn (không dùng trong 2 test). `momoService` mock xóa, thay bằng `jest.spyOn(momoService, "createPaymentUrl")` — đủ cho assertion "not called" trong demo-mode path. Real HMAC code paths (verifyCallback) chưa có test trực tiếp — đây là khoản nợ kỹ thuật còn lại.
 
 **Mock hiện tại làm gì:**
 
