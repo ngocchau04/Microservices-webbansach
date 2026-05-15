@@ -271,3 +271,129 @@ product.set(updatedData);
 
 **KHÔNG thực hiện ở phase này — để phase fix code nguồn.**
 
+---
+
+## BUG-06: voucherController trả 500 cho ValidationError, E11000, và không validate expiration date
+
+**Phát hiện tại:** `Backend/test/voucherController.unit.test.js` TC-06, TC-07, TC-08 (test.skip)  
+**Nguồn gốc:** Bước 4 — viết unit test mới cho voucherController  
+**Ngày phát hiện:** 2026-05-14
+
+### Triệu chứng
+
+**Issue A — POST thiếu required field → 500 thay vì 400:**
+```
+POST /voucher (body thiếu voucherCode)
+Actual:   500 { status: "error", message: "Server error" }
+Expected: 400 { status: "error", ... }
+```
+Mongoose `ValidationError` bị nuốt vào catch block chung → 500.
+
+**Issue B — POST code trùng (unique) → 500 thay vì 409:**
+```
+POST /voucher (voucherCode đã tồn tại)
+Actual:   500 { status: "error", message: "Server error" }
+Expected: 409 { status: "error", ... }
+```
+MongoDB `MongoServerError: E11000 duplicate key error` bị nuốt → 500.
+
+**Issue C — POST không validate expiration date trong quá khứ → 201:**
+```
+POST /voucher { voucherExpiration: new Date('2020-01-01') }
+Actual:   201 — voucher được tạo thành công với expiration đã qua
+Expected: 400 — từ chối tạo voucher hết hạn ngay từ đầu
+```
+Không có validation nào trong controller hoặc schema kiểm tra `voucherExpiration >= now`.
+
+### Phân tích
+
+`voucherController.js` dùng pattern catch chung giống `productController.js`:
+```js
+} catch (error) {
+  console.error("Error:", error);
+  res.status(500).json({ status: "error", message: "Server error" });
+}
+```
+Không phân biệt `ValidationError` (400), `MongoServerError code 11000` (409), hay server error thật (500).
+
+`voucherExpiration` trong `Voucher.js` schema chỉ là `{ type: Date }` — không có custom validator nào kiểm tra ngày không được trong quá khứ.
+
+### Tác động
+
+- Client nhận 500 cho lỗi dữ liệu của chính mình → không thể phân biệt bug server với input sai
+- Admin có thể tạo voucher đã hết hạn mà không bị cảnh báo
+- Duplicate voucherCode → 500 thay vì 409
+
+### Fix đề xuất (tầng code nguồn)
+
+**Fix A — Phân biệt lỗi trong catch:**
+```js
+} catch (error) {
+  if (error.name === 'ValidationError') {
+    return res.status(400).json({ status: "error", message: error.message });
+  }
+  if (error.code === 11000) {
+    return res.status(409).json({ status: "error", message: "Voucher code already exists" });
+  }
+  console.error("Error:", error);
+  res.status(500).json({ status: "error", message: "Server error" });
+}
+```
+
+**Fix B — Thêm validate expiration date vào schema:**
+```js
+voucherExpiration: {
+  type: Date,
+  validate: {
+    validator: function(v) { return !v || v > new Date(); },
+    message: 'Expiration date must be in the future',
+  },
+},
+```
+
+**KHÔNG thực hiện ở phase này — để phase fix code nguồn.**
+
+---
+
+## BUG-07: voucherController không validate ObjectId format trong PUT và DELETE
+
+**Phát hiện tại:** `Backend/test/voucherController.unit.test.js` TC-16, TC-22 (test.skip)  
+**Nguồn gốc:** Bước 4 — viết unit test mới cho voucherController  
+**Ngày phát hiện:** 2026-05-14
+
+### Triệu chứng
+
+```
+PUT /voucher/not-an-objectid
+DELETE /voucher/not-an-objectid
+Actual:   500 { status: "error", message: "Server error" }
+Expected: 400 { message: "Invalid voucher ID format" }
+```
+
+### Phân tích
+
+`productController.js` có kiểm tra ObjectId hợp lệ trước khi query:
+```js
+if (!mongoose.Types.ObjectId.isValid(id)) {
+  return res.status(400).json({ message: "Invalid product ID format" });
+}
+```
+
+`voucherController.js` không có kiểm tra này. Khi `Voucher.findById('not-an-objectid')` được gọi, Mongoose ném `CastError: Cast to ObjectId failed` → bị nuốt vào catch block chung → 500.
+
+### Tác động
+
+- Không nhất quán với productController (product trả 400, voucher trả 500)
+- CastError bị log như server error gây nhiễu log
+
+### Fix đề xuất (tầng code nguồn)
+
+Thêm vào đầu handler `PUT /:id` và `DELETE /:id` trong `voucherController.js`:
+```js
+if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+  return res.status(400).json({ message: "Invalid voucher ID format" });
+}
+```
+
+**KHÔNG thực hiện ở phase này — để phase fix code nguồn.**
+
