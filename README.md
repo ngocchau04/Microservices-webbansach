@@ -1,3 +1,14 @@
+## Tình trạng CI
+
+CI hiện đang fail do **BUG-03** (xem `docs/BUGS_FOUND.md`):
+- File: `services/catalog-service/src/models/Product.js`
+- Lỗi: text index thiếu `default_language: "none"` → MongoDB không hỗ trợ ngôn ngữ Việt → `MongoServerError: language override unsupported`
+- Tác động: 2 integration test fail tại `functional catalog integration`
+- Đây là **phát hiện có chủ đích** trong quá trình kiểm thử, không phải lỗi hệ thống test
+
+Theo nguyên tắc kiểm thử: **test fail = bug được phát hiện**.
+Bug được ghi nhận để dev team fix, không sửa trong scope kiểm thử.
+
 # Bookstore Microservices Monorepo
 
 Production-like microservices refactor of the original bookstore monolith using a strangler migration strategy.
