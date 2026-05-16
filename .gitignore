@@ -60,3 +60,5 @@ services/image-search-service/data/vectors.json
 services/image-search-service/data/*.bin
 services/image-search-service/data/*.sqlite*
 services/image-search-service/models/
+
+.claude/
