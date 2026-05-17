@@ -26,7 +26,7 @@ const productSchema = new mongoose.Schema(
     supplier: { type: String, default: "" },
     publisher: { type: String, default: "" },
     publicationYear: { type: Number },
-    language: { type: String, default: "" },
+    language: { type: String, default: "none" },
     weight: { type: String, default: "" },
     dimensions: { type: String, default: "" },
     pages: { type: Number },
