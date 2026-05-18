@@ -1,151 +1,48 @@
-## Tình trạng CI
+# Bookstore Microservices
 
-CI hiện đang fail do **BUG-03** (xem `docs/BUGS_FOUND.md`):
-- File: `services/catalog-service/src/models/Product.js`
-- Lỗi: text index thiếu `default_language: "none"` → MongoDB không hỗ trợ ngôn ngữ Việt → `MongoServerError: language override unsupported`
-- Tác động: 2 integration test fail tại `functional catalog integration`
-- Đây là **phát hiện có chủ đích** trong quá trình kiểm thử, không phải lỗi hệ thống test
+Đồ án xây dựng hệ thống bán sách theo kiến trúc microservices.
 
-Theo nguyên tắc kiểm thử: **test fail = bug được phát hiện**.
-Bug được ghi nhận để dev team fix, không sửa trong scope kiểm thử.
-
-# Bookstore Microservices Monorepo
-
-Production-like microservices refactor of the original bookstore monolith using a strangler migration strategy.
-
-## Overview
-
-This repository now runs as a microservices monorepo with one frontend entrypoint and one backend gateway entrypoint:
-- Frontend: `apps/web`
-- Backend entrypoint: `apps/api-gateway` (`http://localhost:8080`)
-- Domain services: `identity`, `catalog`, `checkout`, `media`, `notification`, `reporting`, `support`
-
-Frontend does not call service ports directly.
-
-## Repository Structure
+## Cấu trúc đồ án
 
 ```text
-repo-root/
+Microservices-webbansach/
 |- apps/
-|  |- web/
-|  \- api-gateway/
+|  |- web/                 # Frontend
+|  \- api-gateway/         # Cổng backend chính
 |- services/
-|  |- identity-service/
-|  |- catalog-service/
-|  |- checkout-service/
-|  |- media-service/
-|  |- notification-service/
-|  |- reporting-service/
-|  \- support-service/
-|- packages/
-|  |- shared-config/
-|  |- shared-utils/
-|  \- shared-middleware/
-|- infra/
-|  |- docker/
-|  \- scripts/
-|- docs/
+|  |- identity-service/    # Đăng nhập, đăng ký, người dùng
+|  |- catalog-service/     # Sản phẩm, tìm kiếm, đánh giá
+|  |- checkout-service/    # Giỏ hàng, voucher, đơn hàng, thanh toán
+|  |- media-service/       # Upload/xóa ảnh
+|  |- notification-service/# Gửi email/thông báo
+|  |- reporting-service/   # Thống kê, báo cáo
+|  |- support-service/     # Hỗ trợ, phản hồi
+|  \- assistant-service/   # Chatbot hỗ trợ
+|- packages/               # Phần dùng chung
+|- docs/                   # Tài liệu bổ sung
 |- docker-compose.micro.yml
 \- package.json
 ```
 
-## Service Boundaries
+## Cách chạy
 
-- `identity-service`: register/login/refresh/verify/google-login/profile/admin-users
-- `catalog-service`: product listing/detail/search/filter/review/admin-product-crud
-- `checkout-service`: cart/voucher/order/payment orchestration/admin-order-management
-- `media-service`: image upload/delete + Cloudinary wrapper
-- `notification-service`: verification/order/support emails
-- `reporting-service`: dashboard summary/revenue/top products/order status analytics
-- `support-service`: feedback/ticket management
-
-## API Gateway Route Prefixes
-
-- `/api/auth/*` -> identity
-- `/api/catalog/*` -> catalog
-- `/api/checkout/*` -> checkout
-- `/api/media/*` -> media
-- `/api/reporting/*` -> reporting
-- `/api/support/*` -> support
-- `/api/notify/*` -> notification (internal/debug)
-
-## Ports
-
-- `web`: `5173 -> 80`
-- `api-gateway`: `8080 -> 8080`
-- `identity-service`: `4001 -> 4001`
-- `catalog-service`: `4002 -> 4002`
-- `checkout-service`: `4003 -> 4003`
-- `media-service`: `4004 -> 4004`
-- `notification-service`: `4005 -> 4005`
-- `reporting-service`: `4006 -> 4006`
-- `support-service`: `4007 -> 4007`
-- `mongo`: `27017 -> 27017`
-
-## Database Separation
-
-Single Mongo instance, logical DB per service:
-- `book_identity`
-- `book_catalog`
-- `book_checkout`
-- `book_reporting`
-- `book_support`
-
-## Environment Setup
-
-Copy each `.env.example` to `.env` when running outside Docker:
-- `apps/web/.env.example`
-- `apps/api-gateway/.env.example`
-- `services/*/.env.example`
-
-Minimum required variables per service are documented in each service README.
-
-## Run Locally Without Docker
-
-1. Install dependencies per app/service:
-```bash
-npm install
-npm --prefix apps/web install
-npm --prefix apps/api-gateway install
-npm --prefix services/identity-service install
-npm --prefix services/catalog-service install
-npm --prefix services/checkout-service install
-npm --prefix services/media-service install
-npm --prefix services/notification-service install
-npm --prefix services/reporting-service install
-npm --prefix services/support-service install
-```
-
-2. Start MongoDB locally (`mongodb://localhost:27017`).
-
-3. Start services, gateway, web (different terminals):
-```bash
-npm run dev:identity
-npm run dev:catalog
-npm run dev:checkout
-npm run dev:media
-npm run dev:notify
-npm run dev:reporting
-npm run dev:support
-npm run dev:gateway
-npm run dev:web
-```
-
-## Run With Docker Compose
+### Run With Docker Compose
 
 ```bash
 npm run compose:up
 ```
 
-`docker-compose.micro.yml` is the primary and only supported runtime stack.
+`docker-compose.micro.yml` is the primary and only supported runtime stack.  
 `docker-compose.yml` and `docker-compose.dev.yml` are legacy-disabled wrappers that print migration guidance.
 
 Stop stack:
+
 ```bash
 npm run compose:down
 ```
 
 Follow logs:
+
 ```bash
 npm run compose:logs
 ```
@@ -167,91 +64,85 @@ Nếu web lên nhưng API lỗi, thường là một trong các service phía sa
 - `admin@bookstore.local / Admin@123`
 - `user@bookstore.local / User@123`
 
-## Service Dependencies
+## Các lệnh test
 
-- `api-gateway` depends on all domain services.
-- `checkout-service` depends on `catalog-service` (stock/product snapshot) and `notification-service`.
-- `reporting-service` depends on `checkout-service` and `identity-service`.
-- `identity-service` and `support-service` can call `notification-service`.
+### Chạy nhanh theo service
 
-## Core End-to-End Flow
-
-1. Login/Register (`identity-service`)
-2. Browse/Search product (`catalog-service`)
-3. Add to cart + apply voucher + checkout (`checkout-service`)
-4. Admin updates order status (`checkout-service`)
-5. Dashboard reflects order data (`reporting-service`)
-
-Detailed manual checklist: `docs/e2e-manual-checklist.md`
-Assistant chatbot manual test: `docs/assistant-chatbot.md`
-GraphRAG chatbot guide: `docs/graphrag-chatbot.md`
-Image search chatbot guide: `docs/image-search-chatbot.md`
-Demo script: `docs/chatbot-demo-script.md`
-
-## Test Commands
-## Hướng dẫn chạy Test (Kiểm thử)
-
-Hệ thống hỗ trợ kiểm thử tự động bao gồm **Unit Test** (kiểm thử mức logic code) và **Integration Test** (kiểm thử tích hợp qua API Gateway, sử dụng Database thật, không dùng Mock).
-
-### 1. Chạy Unit Test (Kiểm thử độc lập)
-Chạy các bài test logic nội bộ của từng service (không cần bật hệ thống):
 ```bash
+npm run test:gateway
 npm run test:identity
 npm run test:catalog
 npm run test:checkout
+npm run test:media
+npm run test:notify
+npm run test:reporting
+npm run test:support
+npm run test:assistant
 ```
 
-### 2. Chạy Integration Test (Kiểm thử tích hợp thực tế)
-**Yêu cầu bắt buộc:** Toàn bộ hệ thống phải đang chạy hoàn chỉnh qua Docker.
-```bash
-# 1. Bật hệ thống ở Terminal thứ nhất
-npm run compose:up
-```
-
-Mở **Terminal thứ hai** (tại thư mục gốc của dự án) và chạy các lệnh test tương ứng:
-
-**Kiểm thử luồng chức năng chung (Đăng nhập, Tìm sách, Giỏ hàng, Phân quyền):**
-```bash
-npx jest Backend/test/bookstore.integration.test.js
-```
-
-**Kiểm thử luồng Chatbot AI (Text Chat, GraphRAG, Image Search):**
-```bash
-npx jest services/assistant-service/test/assistant.real.test.js
-```
-
-*Lưu ý: Vì đây là Test thực tế, nếu Database của bạn rỗng hoặc Service có lỗi thật, Test sẽ tự động báo Fail đỏ để phản ánh đúng hiện trạng.*
-
-## Seed Commands
+### Unit test
 
 ```bash
-npm run seed:identity
-npm run seed:catalog
-npm run seed:checkout
-npm run seed:support
-npm run seed:all
+npx jest services/identity-service/test/authService.unit.real.test.js
+npx jest services/identity-service/test/authService.admin.unit.test.js
+
+npx jest services/catalog-service/test/productService.unit.test.js
+npx jest services/catalog-service/test/reviewService.eligibility.test.js
+
+npx jest services/checkout-service/test/admin.order.unit.test.js
+npx jest services/checkout-service/test/functional.payment.unit.test.js
+npx jest services/checkout-service/test/orderService.postDelivery.test.js
+npx jest services/checkout-service/test/orderService.voucher.test.js
+npx jest services/checkout-service/test/momoService.test.js
+npx jest services/checkout-service/test/vnpayService.test.js
+npx jest services/checkout-service/test/catalogClient.stockFallback.test.js
+
+npx jest services/media-service/test/media.service.unit.test.js
+npx jest services/notification-service/test/notification.service.unit.test.js
+npx jest services/reporting-service/test/reporting.service.real.unit.test.js
+npx jest services/support-service/test/feedback.service.unit.real.test.js
+npx jest services/assistant-service/test/chatbot.intent.unit.test.js
 ```
 
-Smoke coverage includes:
-- auth flow (register/verify/login/refresh/me + admin users)
-- catalog flow (list/detail/search/review/admin CRUD)
-- checkout flow (cart/voucher/checkout/admin status update)
+### Integration test
 
-## Health Endpoints
+Lưu ý: nên bật hệ thống bằng Docker trước khi chạy các test tích hợp cần service/database thật.
 
-- Gateway: `GET /health`
-- Each service: `GET /health`
+```bash
+npx jest services/identity-service/test/functional.identity.integration.test.js
+npx jest services/identity-service/test/functional.identity.admin.integration.test.js
 
-## Legacy Code Cleanup Policy
+npx jest services/catalog-service/test/functional.catalog.integration.test.js
 
-- `Backend/` and `FrontEnd/` are retained as legacy references during strangler migration.
-- Active stack for handover is `apps/* + services/* + docker-compose.micro.yml`.
-- New work should not add runtime dependencies from `apps/web` to legacy monolith ports.
-- Active gateway routing is microservices-only and does not fallback to monolith runtime targets.
+npx jest services/checkout-service/test/functional.payment.integration.test.js
+npx jest services/checkout-service/test/functional.admin.order.integration.test.js
 
-## Member:
-- 3122411020: Đàm Thị Ngọc Châu (Leader)
-- 3122411049: Lê Gia Hân
-- 3122411141: Phan Thị Hồng Nhiên
-- 3122411173: Võ Hoàng Kim Quyên
-- 3122411243: Phan Thị Hải Vân
+npx jest services/media-service/test/functional.media.integration.test.js
+npx jest services/notification-service/test/functional.notification.integration.test.js
+npx jest services/reporting-service/test/functional.reporting.integration.test.js
+npx jest services/support-service/test/functional.support.integration.test.js
+
+npx jest services/assistant-service/test/chatbot.chat.integration.test.js
+npx jest services/assistant-service/test/chatbot.admin.integration.test.js
+npx jest services/assistant-service/test/chatbot.handoff.integration.test.js
+```
+
+### Smoke test
+
+```bash
+npx jest apps/api-gateway/test/gateway.smoke.test.js
+npx jest services/identity-service/test/identity.smoke.test.js
+npx jest services/catalog-service/test/catalog.smoke.test.js
+npx jest services/checkout-service/test/checkout.smoke.test.js
+npx jest services/media-service/test/media.smoke.test.js
+npx jest services/notification-service/test/notification.smoke.test.js
+npx jest services/reporting-service/test/reporting.smoke.test.js
+npx jest services/support-service/test/support.smoke.test.js
+npx jest services/assistant-service/test/assistant.smoke.test.js
+```
+
+### Assistant real e2e
+
+```bash
+npx jest services/assistant-service/test/assistant.real.e2e.js
+```
